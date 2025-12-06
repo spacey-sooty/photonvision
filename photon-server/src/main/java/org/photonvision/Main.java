@@ -42,7 +42,6 @@ import org.photonvision.jni.AmdDetectorJNI;
 import org.photonvision.jni.LibraryLoader;
 import org.photonvision.jni.RknnDetectorJNI;
 import org.photonvision.jni.RubikDetectorJNI;
-import org.photonvision.mrcal.MrCalJNILoader;
 import org.photonvision.raspi.LibCameraJNILoader;
 import org.photonvision.server.Server;
 import org.photonvision.vision.apriltag.AprilTagFamily;
@@ -275,8 +274,8 @@ public class Main {
             logger.error("Failed lo load amd-JNI!", e);
         }
         try {
-            MrCalJNILoader.forceLoad();
-        } catch (IOException e) {
+            TestUtils.loadMrcal();
+        } catch (Exception e) {
             logger.warn(
                     "Failed to load mrcal-JNI! Camera calibration will fall back to opencv\n"
                             + e.getMessage());

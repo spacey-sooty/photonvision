@@ -50,7 +50,7 @@ ext {
     rubikVersion = "dev-v2025.1.0-6-g4a5e508"
     amdJniVersion = "0.0.4-dev"
     frcYear = "2025"
-    mrcalVersion = "v2025.0.0";
+    mrcalVersion = "dev-v2025.0.0-2-g2adb187";
 
 
     pubVersion = versionString
