@@ -200,7 +200,6 @@ public class NeuralNetworkModelManager {
                         Family.ONNX,
                         Version.YOLOV5));
 
-
         return nnProps;
     }
 

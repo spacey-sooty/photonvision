@@ -39,11 +39,6 @@ import org.photonvision.common.logging.Logger;
 import org.photonvision.common.logging.PvCSCoreLogger;
 import org.photonvision.common.networking.NetworkManager;
 import org.photonvision.common.util.TestUtils;
-import org.photonvision.jni.AmdDetectorJNI;
-import org.photonvision.jni.LibraryLoader;
-import org.photonvision.jni.RknnDetectorJNI;
-import org.photonvision.jni.RubikDetectorJNI;
-import org.photonvision.raspi.LibCameraJNILoader;
 import org.photonvision.server.Server;
 import org.photonvision.vision.apriltag.AprilTagFamily;
 import org.photonvision.vision.camera.PVCameraInfo;
@@ -243,24 +238,16 @@ public class Main {
             logger.error("Failed to load Rubik-JNI!", e);
         }
         try {
-<<<<<<< HEAD
             if (Platform.isAmd()) {
-              AmdDetectorJNI.forceLoad();
-              if (AmdDetectorJNI.getInstance().isLoaded()) {
-                  logger.info("AmdDetectorJNI loaded successfully.");
-              } else {
-                  logger.error("Failed to load AmdDetectorJNI!");
-              }
+                LoadJNI.forceLoad(LoadJNI.JNITypes.AMD_DETECTOR);
+                logger.info("Loaded AMD-JNI");
             }
         } catch (Exception e) {
-            logger.error("Failed lo load amd-JNI!", e);
+            logger.error("Failed lo load AMD-JNI!", e);
         }
         try {
-            TestUtils.loadMrcal();
-=======
             LoadJNI.forceLoad(LoadJNI.JNITypes.MRCAL);
             logger.info("mrcal-JNI loaded successfully.");
->>>>>>> 1bb05a0e (Remove PhotonJNICommon in favor of CombinedRuntimeLoader (#2223))
         } catch (Exception e) {
             logger.warn(
                     "Failed to load mrcal-JNI! Camera calibration will fall back to opencv\n"

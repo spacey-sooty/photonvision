@@ -28,6 +28,7 @@ public class LoadJNI {
     public enum JNITypes {
         RUBIK_DETECTOR("tensorflowlite", "tensorflowlite_c", "external_delegate", "rubik_jni"),
         RKNN_DETECTOR("rga", "rknnrt", "rknn_jni"),
+        AMD_DETECTOR("amd_jni"),
         MRCAL("mrcal_jni"),
         LIBCAMERA("photonlibcamera");
 
