@@ -244,6 +244,7 @@ public class Main {
             }
         } catch (Exception e) {
             logger.error("Failed lo load AMD-JNI!", e);
+            throw new RuntimeException(e);
         }
         try {
             LoadJNI.forceLoad(LoadJNI.JNITypes.MRCAL);

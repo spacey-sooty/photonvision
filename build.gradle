@@ -48,7 +48,7 @@ ext {
     libcameraDriverVersion = "dev-v2025.0.4-2-gc91d4b7"
     rknnVersion = "dev-v2025.0.0-7-g83c1bf3"
     rubikVersion = "dev-v2025.1.0-7-g39588a8"
-    amdJniVersion = "0.0.4-dev"
+    amdJniVersion = "0.0.7-dev"
     frcYear = "2026beta"
     mrcalVersion = "dev-v2025.0.0-2-g2adb187";
 

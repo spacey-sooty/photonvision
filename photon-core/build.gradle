@@ -47,6 +47,12 @@ dependencies {
             transitive = false
         }
     }
+    if (jniPlatform == "linuxx86-64") {
+        wpilibNatives("org.photonvision:amd_jni-jni:$amdJniVersion:$wpilibNativeName") {
+          transitive = false
+        }
+    }
+    implementation "org.photonvision:amd_jni-java:$amdJniVersion"
 
     implementation("org.photonvision:rknn_jni-java:$rknnVersion") {
         transitive = false
@@ -56,7 +62,6 @@ dependencies {
         transitive = false
     }
 
-    implementation "org.teamdeadbolts:amd_jni-${nativeName}:$amdJniVersion"
 
     implementation "org.photonvision:photon-libcamera-gl-driver-java:$libcameraDriverVersion"
 
