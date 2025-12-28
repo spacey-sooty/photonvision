@@ -49,7 +49,7 @@ dependencies {
     }
     if (jniPlatform == "linuxx86-64") {
         wpilibNatives("org.photonvision:amd_jni-jni:$amdJniVersion:$wpilibNativeName") {
-          transitive = false
+            transitive = false
         }
     }
     implementation "org.photonvision:amd_jni-java:$amdJniVersion"
