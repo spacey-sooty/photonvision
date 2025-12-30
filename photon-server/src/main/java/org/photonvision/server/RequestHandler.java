@@ -679,7 +679,7 @@ public class RequestHandler {
                             switch (family) {
                                 case RUBIK -> new RubikModel(modelProperties).load();
                                 case RKNN -> new RknnModel(modelProperties).load();
-                                case ONNX -> throw new RuntimeException("ONNX models are not yet supported");
+                                case ONNX -> new OnnxModel(modelProperties).load();
                             };
                 } catch (RuntimeException e) {
                     ctx.status(400);
