@@ -27,7 +27,7 @@ import edu.wpi.first.networktables.NetworkTablesJNI;
 import edu.wpi.first.util.WPIUtilJNI;
 import java.io.IOException;
 import org.opencv.core.Core;
-import org.photonvision.common.CombinedRuntimeLoader;
+import org.photonvision.jni.CombinedRuntimeLoader;
 
 public class LibraryLoader {
     private static boolean hasWpiLoaded = false;
