@@ -29,23 +29,23 @@ import org.photonvision.common.configuration.NeuralNetworkModelsSettings.ModelPr
 import org.photonvision.common.util.file.JacksonUtils;
 
 public class NeuralNetworkPropertyManagerTest {
-    @Test
-    void testSerialization() {
-        var nnpm = new NeuralNetworkModelsSettings();
-        // Path is always serialized as absolute; for the test to pass, this must also be made absolute
-        nnpm.addModelProperties(
-                new ModelProperties(
-                        Path.of("test", "yolov8nCOCO.rknn").toAbsolutePath(),
-                        "COCO",
-                        new LinkedList<>(),
-                        640,
-                        640,
-                        Family.RKNN,
-                        Version.YOLOV8));
-        String result = assertDoesNotThrow(() -> JacksonUtils.serializeToString(nnpm));
-        var deserializedNnpm =
-                assertDoesNotThrow(
-                        () -> JacksonUtils.deserialize(result, NeuralNetworkModelsSettings.class));
-        assertEquals(nnpm.getModels()[0], deserializedNnpm.getModels()[0]);
-    }
+  @Test
+  void testSerialization() {
+    var nnpm = new NeuralNetworkModelsSettings();
+    // Path is always serialized as absolute; for the test to pass, this must also be made absolute
+    nnpm.addModelProperties(
+        new ModelProperties(
+            Path.of("test", "yolov8nCOCO.rknn").toAbsolutePath(),
+            "COCO",
+            new LinkedList<>(),
+            640,
+            640,
+            Family.RKNN,
+            Version.YOLOV8));
+    String result = assertDoesNotThrow(() -> JacksonUtils.serializeToString(nnpm));
+    var deserializedNnpm =
+        assertDoesNotThrow(
+            () -> JacksonUtils.deserialize(result, NeuralNetworkModelsSettings.class));
+    assertEquals(nnpm.getModels()[0], deserializedNnpm.getModels()[0]);
+  }
 }

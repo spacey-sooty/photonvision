@@ -26,42 +26,42 @@ import org.photonvision.common.logging.Logger;
 import org.photonvision.common.util.file.JacksonUtils;
 
 public class TestRequestHandler {
-    // Treat all 2XX calls as "INFO"
-    // Treat all 4XX calls as "ERROR"
-    // Treat all 5XX calls as "ERROR"
+  // Treat all 2XX calls as "INFO"
+  // Treat all 4XX calls as "ERROR"
+  // Treat all 5XX calls as "ERROR"
 
-    static Logger logger = new Logger(TestRequestHandler.class, LogGroup.WebServer);
+  static Logger logger = new Logger(TestRequestHandler.class, LogGroup.WebServer);
 
-    public static void handleResetRequest(Context ctx) {
-        logger.info("Resetting Backend");
-        // Reset backend
-        ConfigManager.nukeConfigDirectory();
-        ConfigManager.getInstance().load();
+  public static void handleResetRequest(Context ctx) {
+    logger.info("Resetting Backend");
+    // Reset backend
+    ConfigManager.nukeConfigDirectory();
+    ConfigManager.getInstance().load();
+  }
+
+  private record PlatformOverrideRequest(Platform platform) {}
+
+  public static void handlePlatformOverrideRequest(Context ctx) {
+    try {
+      PlatformOverrideRequest request =
+          JacksonUtils.deserialize(ctx.body(), PlatformOverrideRequest.class);
+      Platform platform = request.platform();
+      logger.info("Overriding platform to: " + platform);
+
+      Platform.overridePlatform(platform);
+      NeuralNetworkModelManager.getInstance(true).extractModels();
+      NeuralNetworkModelManager.getInstance().discoverModels();
+      ctx.status(200);
+
+    } catch (Exception e) {
+      logger.error("Failed to parse platform override request: " + e.getMessage());
+      ctx.status(400).result("Invalid request");
     }
+  }
 
-    private record PlatformOverrideRequest(Platform platform) {}
-
-    public static void handlePlatformOverrideRequest(Context ctx) {
-        try {
-            PlatformOverrideRequest request =
-                    JacksonUtils.deserialize(ctx.body(), PlatformOverrideRequest.class);
-            Platform platform = request.platform();
-            logger.info("Overriding platform to: " + platform);
-
-            Platform.overridePlatform(platform);
-            NeuralNetworkModelManager.getInstance(true).extractModels();
-            NeuralNetworkModelManager.getInstance().discoverModels();
-            ctx.status(200);
-
-        } catch (Exception e) {
-            logger.error("Failed to parse platform override request: " + e.getMessage());
-            ctx.status(400).result("Invalid request");
-        }
-    }
-
-    public static void testMode(Context ctx) {
-        logger.info("Test mode activated");
-        RequestHandler.setTestMode(true);
-        ctx.status(200).result("Test mode activated");
-    }
+  public static void testMode(Context ctx) {
+    logger.info("Test mode activated");
+    RequestHandler.setTestMode(true);
+    ctx.status(200).result("Test mode activated");
+  }
 }

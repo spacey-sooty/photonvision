@@ -28,38 +28,38 @@ import org.photonvision.jni.TimeSyncClient;
 import org.photonvision.jni.TimeSyncServer;
 
 public class TimeSyncTest {
-    @BeforeAll
-    public static void load() throws IOException {
-        LibraryLoader.loadWpiLibraries();
-        RuntimeLoader.loadLibrary("photontargetingJNI");
+  @BeforeAll
+  public static void load() throws IOException {
+    LibraryLoader.loadWpiLibraries();
+    RuntimeLoader.loadLibrary("photontargetingJNI");
 
-        HAL.initialize(1000, 0);
+    HAL.initialize(1000, 0);
+  }
+
+  @AfterAll
+  public static void teardown() {
+    HAL.shutdown();
+  }
+
+  @Test
+  public void smoketest() throws InterruptedException {
+    // NetworkTableInstance.getDefault().stopClient();
+    // NetworkTableInstance.getDefault().startServer();
+
+    var server = new TimeSyncServer(5810);
+
+    System.err.println("Waiting: PID=" + ProcessHandle.current().pid());
+
+    server.start();
+
+    var client = new TimeSyncClient("127.0.0.1", 5810, 0.5);
+
+    for (int i = 0; i < 5; i++) {
+      Thread.sleep(100);
+      System.out.println(client.getPingMetadata());
     }
 
-    @AfterAll
-    public static void teardown() {
-        HAL.shutdown();
-    }
-
-    @Test
-    public void smoketest() throws InterruptedException {
-        // NetworkTableInstance.getDefault().stopClient();
-        // NetworkTableInstance.getDefault().startServer();
-
-        var server = new TimeSyncServer(5810);
-
-        System.err.println("Waiting: PID=" + ProcessHandle.current().pid());
-
-        server.start();
-
-        var client = new TimeSyncClient("127.0.0.1", 5810, 0.5);
-
-        for (int i = 0; i < 5; i++) {
-            Thread.sleep(100);
-            System.out.println(client.getPingMetadata());
-        }
-
-        server.stop();
-        client.stop();
-    }
+    server.stop();
+    client.stop();
+  }
 }

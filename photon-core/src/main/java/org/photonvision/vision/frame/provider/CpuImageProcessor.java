@@ -29,103 +29,103 @@ import org.photonvision.vision.pipe.impl.HSVPipe;
 import org.photonvision.vision.pipe.impl.RotateImagePipe;
 
 public abstract class CpuImageProcessor extends FrameProvider {
-    protected static class CapturedFrame {
-        CVMat colorImage;
-        FrameStaticProperties staticProps;
-        long captureTimestamp;
+  protected static class CapturedFrame {
+    CVMat colorImage;
+    FrameStaticProperties staticProps;
+    long captureTimestamp;
 
-        public CapturedFrame(
-                CVMat colorImage, FrameStaticProperties staticProps, long captureTimestampNanos) {
-            this.colorImage = colorImage;
-            this.staticProps = staticProps;
-            this.captureTimestamp = captureTimestampNanos;
-        }
+    public CapturedFrame(
+        CVMat colorImage, FrameStaticProperties staticProps, long captureTimestampNanos) {
+      this.colorImage = colorImage;
+      this.staticProps = staticProps;
+      this.captureTimestamp = captureTimestampNanos;
+    }
+  }
+
+  private final HSVPipe m_hsvPipe = new HSVPipe();
+  private final RotateImagePipe m_rImagePipe = new RotateImagePipe();
+  private final GrayscalePipe m_grayPipe = new GrayscalePipe();
+  FrameThresholdType m_processType;
+  boolean m_blockForFrames = true;
+
+  private final Object m_mutex = new Object();
+
+  abstract CapturedFrame getInputMat();
+
+  public CpuImageProcessor() {
+    m_hsvPipe.setParams(
+        new HSVPipe.HSVParams(
+            new IntegerCouple(0, 180),
+            new IntegerCouple(0, 255),
+            new IntegerCouple(0, 255),
+            false));
+  }
+
+  @Override
+  public final Frame get() {
+    var input = getInputMat();
+
+    m_rImagePipe.run(input.colorImage.getMat());
+
+    CVMat outputMat = null;
+    if (!input.colorImage.getMat().empty()) {
+      if (m_processType == FrameThresholdType.HSV) {
+        var hsvResult = m_hsvPipe.run(input.colorImage.getMat());
+        outputMat = new CVMat(hsvResult.output);
+      } else if (m_processType == FrameThresholdType.GREYSCALE) {
+        var result = m_grayPipe.run(input.colorImage.getMat());
+        outputMat = new CVMat(result.output);
+      } else {
+        outputMat = new CVMat();
+      }
+
+      ++sequenceID;
+    } else {
+      System.out.println("Input was empty!");
+      outputMat = new CVMat();
     }
 
-    private final HSVPipe m_hsvPipe = new HSVPipe();
-    private final RotateImagePipe m_rImagePipe = new RotateImagePipe();
-    private final GrayscalePipe m_grayPipe = new GrayscalePipe();
-    FrameThresholdType m_processType;
-    boolean m_blockForFrames = true;
+    return new Frame(
+        sequenceID,
+        input.colorImage,
+        outputMat,
+        m_processType,
+        input.captureTimestamp,
+        input.staticProps != null
+            ? input.staticProps.rotate(m_rImagePipe.getParams().rotation())
+            : input.staticProps);
+  }
 
-    private final Object m_mutex = new Object();
-
-    abstract CapturedFrame getInputMat();
-
-    public CpuImageProcessor() {
-        m_hsvPipe.setParams(
-                new HSVPipe.HSVParams(
-                        new IntegerCouple(0, 180),
-                        new IntegerCouple(0, 255),
-                        new IntegerCouple(0, 255),
-                        false));
+  @Override
+  public void requestFrameThresholdType(FrameThresholdType type) {
+    synchronized (m_mutex) {
+      this.m_processType = type;
     }
+  }
 
-    @Override
-    public final Frame get() {
-        var input = getInputMat();
-
-        m_rImagePipe.run(input.colorImage.getMat());
-
-        CVMat outputMat = null;
-        if (!input.colorImage.getMat().empty()) {
-            if (m_processType == FrameThresholdType.HSV) {
-                var hsvResult = m_hsvPipe.run(input.colorImage.getMat());
-                outputMat = new CVMat(hsvResult.output);
-            } else if (m_processType == FrameThresholdType.GREYSCALE) {
-                var result = m_grayPipe.run(input.colorImage.getMat());
-                outputMat = new CVMat(result.output);
-            } else {
-                outputMat = new CVMat();
-            }
-
-            ++sequenceID;
-        } else {
-            System.out.println("Input was empty!");
-            outputMat = new CVMat();
-        }
-
-        return new Frame(
-                sequenceID,
-                input.colorImage,
-                outputMat,
-                m_processType,
-                input.captureTimestamp,
-                input.staticProps != null
-                        ? input.staticProps.rotate(m_rImagePipe.getParams().rotation())
-                        : input.staticProps);
+  @Override
+  public void requestFrameRotation(ImageRotationMode rotationMode) {
+    synchronized (m_mutex) {
+      m_rImagePipe.setParams(new RotateImagePipe.RotateImageParams(rotationMode));
     }
+  }
 
-    @Override
-    public void requestFrameThresholdType(FrameThresholdType type) {
-        synchronized (m_mutex) {
-            this.m_processType = type;
-        }
+  /** Ask the camera to rotate frames it outputs */
+  public void requestHsvSettings(HSVPipe.HSVParams params) {
+    synchronized (m_mutex) {
+      m_hsvPipe.setParams(params);
     }
+  }
 
-    @Override
-    public void requestFrameRotation(ImageRotationMode rotationMode) {
-        synchronized (m_mutex) {
-            m_rImagePipe.setParams(new RotateImagePipe.RotateImageParams(rotationMode));
-        }
-    }
+  @Override
+  public void requestFrameCopies(boolean copyInput, boolean copyOutput) {
+    // We don't actually do zero-copy, so this method is a no-op
+  }
 
-    /** Ask the camera to rotate frames it outputs */
-    public void requestHsvSettings(HSVPipe.HSVParams params) {
-        synchronized (m_mutex) {
-            m_hsvPipe.setParams(params);
-        }
+  @Override
+  public void requestBlockForFrames(boolean blockForFrames) {
+    synchronized (m_mutex) {
+      this.m_blockForFrames = blockForFrames;
     }
-
-    @Override
-    public void requestFrameCopies(boolean copyInput, boolean copyOutput) {
-        // We don't actually do zero-copy, so this method is a no-op
-    }
-
-    @Override
-    public void requestBlockForFrames(boolean blockForFrames) {
-        synchronized (m_mutex) {
-            this.m_blockForFrames = blockForFrames;
-        }
-    }
+  }
 }

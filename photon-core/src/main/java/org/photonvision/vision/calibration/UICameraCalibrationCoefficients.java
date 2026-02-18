@@ -22,50 +22,50 @@ import java.util.stream.IntStream;
 import org.opencv.core.Size;
 
 public class UICameraCalibrationCoefficients extends CameraCalibrationCoefficients {
-    public int numSnapshots;
+  public int numSnapshots;
 
-    public List<Double> meanErrors;
-    public List<Integer> numMissing;
-    public List<Integer> numOutliers;
+  public List<Double> meanErrors;
+  public List<Integer> numMissing;
+  public List<Integer> numOutliers;
 
-    private static int countOutliers(BoardObservation obs) {
-        return (int) obs.locationInImageSpace.stream().filter(it -> it.x < 0 || it.y < 0).count();
-    }
+  private static int countOutliers(BoardObservation obs) {
+    return (int) obs.locationInImageSpace.stream().filter(it -> it.x < 0 || it.y < 0).count();
+  }
 
-    public UICameraCalibrationCoefficients(
-            Size resolution,
-            JsonMatOfDouble cameraIntrinsics,
-            JsonMatOfDouble distCoeffs,
-            double[] calobjectWarp,
-            List<BoardObservation> observations,
-            Size calobjectSize,
-            double calobjectSpacing,
-            CameraLensModel lensmodel) {
-        // yeet observations, keep all else
-        super(
-                resolution,
-                cameraIntrinsics,
-                distCoeffs,
-                calobjectWarp,
-                List.of(),
-                calobjectSize,
-                calobjectSpacing,
-                lensmodel);
+  public UICameraCalibrationCoefficients(
+      Size resolution,
+      JsonMatOfDouble cameraIntrinsics,
+      JsonMatOfDouble distCoeffs,
+      double[] calobjectWarp,
+      List<BoardObservation> observations,
+      Size calobjectSize,
+      double calobjectSpacing,
+      CameraLensModel lensmodel) {
+    // yeet observations, keep all else
+    super(
+        resolution,
+        cameraIntrinsics,
+        distCoeffs,
+        calobjectWarp,
+        List.of(),
+        calobjectSize,
+        calobjectSpacing,
+        lensmodel);
 
-        this.numSnapshots = observations.size();
-        this.meanErrors = observations.stream().map(BoardObservation::meanReprojectionError).toList();
+    this.numSnapshots = observations.size();
+    this.meanErrors = observations.stream().map(BoardObservation::meanReprojectionError).toList();
 
-        this.numOutliers =
-                observations.stream()
-                        .map(
-                                obs ->
-                                        IntStream.range(0, obs.cornersUsed.length)
-                                                        .filter(i -> !obs.cornersUsed[i])
-                                                        .map(i -> 1)
-                                                        .sum()
-                                                - countOutliers(obs))
-                        .toList();
-        this.numMissing =
-                observations.stream().map(UICameraCalibrationCoefficients::countOutliers).toList();
-    }
+    this.numOutliers =
+        observations.stream()
+            .map(
+                obs ->
+                    IntStream.range(0, obs.cornersUsed.length)
+                            .filter(i -> !obs.cornersUsed[i])
+                            .map(i -> 1)
+                            .sum()
+                        - countOutliers(obs))
+            .toList();
+    this.numMissing =
+        observations.stream().map(UICameraCalibrationCoefficients::countOutliers).toList();
+  }
 }

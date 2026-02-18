@@ -21,14 +21,14 @@ import java.awt.*;
 import org.photonvision.vision.frame.FrameDivisor;
 
 public class Draw2dAprilTagsPipe extends Draw2dTargetsPipe {
-    public static class Draw2dAprilTagsParams extends Draw2dTargetsPipe.Draw2dTargetsParams {
-        public Draw2dAprilTagsParams(
-                boolean shouldDraw, int outputMaximumTargets, FrameDivisor divisor) {
-            super(shouldDraw, outputMaximumTargets, divisor);
-            // We want to show the polygon, not the rotated box
-            this.showRotatedBox = false;
-            this.showMaximumBox = false;
-            this.rotatedBoxColor = Color.RED;
-        }
+  public static class Draw2dAprilTagsParams extends Draw2dTargetsPipe.Draw2dTargetsParams {
+    public Draw2dAprilTagsParams(
+        boolean shouldDraw, int outputMaximumTargets, FrameDivisor divisor) {
+      super(shouldDraw, outputMaximumTargets, divisor);
+      // We want to show the polygon, not the rotated box
+      this.showRotatedBox = false;
+      this.showMaximumBox = false;
+      this.rotatedBoxColor = Color.RED;
     }
+  }
 }

@@ -25,39 +25,39 @@ import com.diozero.internal.spi.AbstractInputDevice;
 import com.diozero.internal.spi.GpioDigitalInputDeviceInterface;
 
 public class CustomDigitalInputDevice extends AbstractInputDevice<DigitalInputEvent>
-        implements GpioDigitalInputDeviceInterface {
-    protected final CustomAdapter adapter;
-    protected final int gpio;
+    implements GpioDigitalInputDeviceInterface {
+  protected final CustomAdapter adapter;
+  protected final int gpio;
 
-    public CustomDigitalInputDevice(
-            CustomDeviceFactory deviceFactory,
-            String key,
-            int gpio,
-            GpioPullUpDown pud,
-            GpioEventTrigger trigger) {
-        super(key, deviceFactory);
+  public CustomDigitalInputDevice(
+      CustomDeviceFactory deviceFactory,
+      String key,
+      int gpio,
+      GpioPullUpDown pud,
+      GpioEventTrigger trigger) {
+    super(key, deviceFactory);
 
-        adapter = deviceFactory.adapter;
-        this.gpio = gpio;
-    }
+    adapter = deviceFactory.adapter;
+    this.gpio = gpio;
+  }
 
-    @Override
-    public boolean getValue() throws RuntimeIOException {
-        return adapter.getGPIO(gpio);
-    }
+  @Override
+  public boolean getValue() throws RuntimeIOException {
+    return adapter.getGPIO(gpio);
+  }
 
-    @Override
-    public int getGpio() {
-        return gpio;
-    }
+  @Override
+  public int getGpio() {
+    return gpio;
+  }
 
-    @Override
-    public void setDebounceTimeMillis(int debounceTime) {
-        throw new UnsupportedOperationException("Debounce is not supported");
-    }
+  @Override
+  public void setDebounceTimeMillis(int debounceTime) {
+    throw new UnsupportedOperationException("Debounce is not supported");
+  }
 
-    @Override
-    protected void closeDevice() throws RuntimeIOException {
-        adapter.releaseGPIO(gpio);
-    }
+  @Override
+  protected void closeDevice() throws RuntimeIOException {
+    adapter.releaseGPIO(gpio);
+  }
 }

@@ -24,48 +24,48 @@ import com.diozero.internal.spi.AbstractInputDevice;
 import com.diozero.internal.spi.GpioDigitalInputOutputDeviceInterface;
 
 public class CustomDigitalInputOutputDevice extends AbstractInputDevice<DigitalInputEvent>
-        implements GpioDigitalInputOutputDeviceInterface {
-    protected final CustomAdapter adapter;
-    protected final int gpio;
-    private boolean outputValue = false;
+    implements GpioDigitalInputOutputDeviceInterface {
+  protected final CustomAdapter adapter;
+  protected final int gpio;
+  private boolean outputValue = false;
 
-    public CustomDigitalInputOutputDevice(
-            CustomDeviceFactory deviceFactory, String key, int gpio, DeviceMode mode) {
-        super(key, deviceFactory);
+  public CustomDigitalInputOutputDevice(
+      CustomDeviceFactory deviceFactory, String key, int gpio, DeviceMode mode) {
+    super(key, deviceFactory);
 
-        this.adapter = deviceFactory.adapter;
-        this.gpio = gpio;
+    this.adapter = deviceFactory.adapter;
+    this.gpio = gpio;
 
-        setMode(mode);
+    setMode(mode);
+  }
+
+  @Override
+  public void setValue(boolean value) throws RuntimeIOException {
+    outputValue = value;
+    setValue(value);
+  }
+
+  @Override
+  public boolean getValue() throws RuntimeIOException {
+    return adapter.getGPIO(gpio);
+  }
+
+  @Override
+  public int getGpio() {
+    return gpio;
+  }
+
+  @Override
+  public void setMode(DeviceMode mode) {
+    if (mode == DeviceMode.DIGITAL_INPUT) {
+      getValue(); // Ensure the pin direction is input
+    } else if (mode == DeviceMode.DIGITAL_OUTPUT) {
+      setValue(outputValue); // Restore the last output state
     }
+  }
 
-    @Override
-    public void setValue(boolean value) throws RuntimeIOException {
-        outputValue = value;
-        setValue(value);
-    }
-
-    @Override
-    public boolean getValue() throws RuntimeIOException {
-        return adapter.getGPIO(gpio);
-    }
-
-    @Override
-    public int getGpio() {
-        return gpio;
-    }
-
-    @Override
-    public void setMode(DeviceMode mode) {
-        if (mode == DeviceMode.DIGITAL_INPUT) {
-            getValue(); // Ensure the pin direction is input
-        } else if (mode == DeviceMode.DIGITAL_OUTPUT) {
-            setValue(outputValue); // Restore the last output state
-        }
-    }
-
-    @Override
-    public void closeDevice() {
-        adapter.releaseGPIO(gpio);
-    }
+  @Override
+  public void closeDevice() {
+    adapter.releaseGPIO(gpio);
+  }
 }

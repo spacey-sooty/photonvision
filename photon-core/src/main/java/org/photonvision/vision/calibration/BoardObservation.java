@@ -39,152 +39,152 @@ import org.photonvision.common.util.ColorHelper;
 // Ignore the previous calibration data that was stored in the json file.
 @JsonIgnoreProperties(ignoreUnknown = true)
 public final class BoardObservation implements Cloneable {
-    // Expected feature 3d location in the camera frame
-    @JsonProperty("locationInObjectSpace")
-    public List<Point3> locationInObjectSpace;
+  // Expected feature 3d location in the camera frame
+  @JsonProperty("locationInObjectSpace")
+  public List<Point3> locationInObjectSpace;
 
-    // Observed location in pixel space
-    @JsonProperty("locationInImageSpace")
-    public List<Point> locationInImageSpace;
+  // Observed location in pixel space
+  @JsonProperty("locationInImageSpace")
+  public List<Point> locationInImageSpace;
 
-    // (measured location in pixels) - (expected from FK)
-    @JsonProperty("reprojectionErrors")
-    public List<Point> reprojectionErrors;
+  // (measured location in pixels) - (expected from FK)
+  @JsonProperty("reprojectionErrors")
+  public List<Point> reprojectionErrors;
 
-    // Solver optimized board poses
-    @JsonProperty("optimisedCameraToObject")
-    public Pose3d optimisedCameraToObject;
+  // Solver optimized board poses
+  @JsonProperty("optimisedCameraToObject")
+  public Pose3d optimisedCameraToObject;
 
-    // If we should use this observation when re-calculating camera calibration
-    @JsonProperty("cornersUsed")
-    public boolean[] cornersUsed;
+  // If we should use this observation when re-calculating camera calibration
+  @JsonProperty("cornersUsed")
+  public boolean[] cornersUsed;
 
-    @JsonProperty("snapshotName")
-    public String snapshotName;
+  @JsonProperty("snapshotName")
+  public String snapshotName;
 
-    @JsonProperty("snapshotDataLocation")
-    @Nullable
-    public Path snapshotDataLocation;
+  @JsonProperty("snapshotDataLocation")
+  @Nullable
+  public Path snapshotDataLocation;
 
-    @JsonCreator
-    public BoardObservation(
-            @JsonProperty("locationInObjectSpace") List<Point3> locationInObjectSpace,
-            @JsonProperty("locationInImageSpace") List<Point> locationInImageSpace,
-            @JsonProperty("reprojectionErrors") List<Point> reprojectionErrors,
-            @JsonProperty("optimisedCameraToObject") Pose3d optimisedCameraToObject,
-            @JsonProperty("cornersUsed") boolean[] cornersUsed,
-            @JsonProperty("snapshotName") String snapshotName,
-            @JsonProperty("snapshotDataLocation") Path snapshotDataLocation) {
-        this.locationInObjectSpace = locationInObjectSpace;
-        this.locationInImageSpace = locationInImageSpace;
-        this.reprojectionErrors = reprojectionErrors;
-        this.optimisedCameraToObject = optimisedCameraToObject;
-        this.snapshotName = snapshotName;
-        this.snapshotDataLocation = snapshotDataLocation;
+  @JsonCreator
+  public BoardObservation(
+      @JsonProperty("locationInObjectSpace") List<Point3> locationInObjectSpace,
+      @JsonProperty("locationInImageSpace") List<Point> locationInImageSpace,
+      @JsonProperty("reprojectionErrors") List<Point> reprojectionErrors,
+      @JsonProperty("optimisedCameraToObject") Pose3d optimisedCameraToObject,
+      @JsonProperty("cornersUsed") boolean[] cornersUsed,
+      @JsonProperty("snapshotName") String snapshotName,
+      @JsonProperty("snapshotDataLocation") Path snapshotDataLocation) {
+    this.locationInObjectSpace = locationInObjectSpace;
+    this.locationInImageSpace = locationInImageSpace;
+    this.reprojectionErrors = reprojectionErrors;
+    this.optimisedCameraToObject = optimisedCameraToObject;
+    this.snapshotName = snapshotName;
+    this.snapshotDataLocation = snapshotDataLocation;
 
-        // legacy migration -- we assume all points are inliers
-        if (cornersUsed == null) {
-            cornersUsed = new boolean[locationInObjectSpace.size()];
-            Arrays.fill(cornersUsed, true);
-        }
-        this.cornersUsed = cornersUsed;
+    // legacy migration -- we assume all points are inliers
+    if (cornersUsed == null) {
+      cornersUsed = new boolean[locationInObjectSpace.size()];
+      Arrays.fill(cornersUsed, true);
+    }
+    this.cornersUsed = cornersUsed;
+  }
+
+  @Override
+  public String toString() {
+    return "BoardObservation [locationInObjectSpace="
+        + locationInObjectSpace
+        + ", locationInImageSpace="
+        + locationInImageSpace
+        + ", reprojectionErrors="
+        + reprojectionErrors
+        + ", optimisedCameraToObject="
+        + optimisedCameraToObject
+        + ", cornersUsed="
+        + cornersUsed
+        + ", snapshotName="
+        + snapshotName
+        + ", snapshotDataLocation="
+        + snapshotDataLocation
+        + "]";
+  }
+
+  @Override
+  public BoardObservation clone() {
+    try {
+      return (BoardObservation) super.clone();
+    } catch (CloneNotSupportedException e) {
+      System.err.println("Guhhh clone buh");
+      return null;
+    }
+  }
+
+  @JsonIgnore
+  /**
+   * Load the captured board image from disk. Allocates a new Mat, which the caller is responsible
+   * for releasing.
+   *
+   * @return The loaded image, or null if it could not be loaded.
+   */
+  public Mat loadImage() {
+    Mat img = Imgcodecs.imread(this.snapshotDataLocation.toString());
+    if (img == null || img.empty() || img.rows() == 0 || img.cols() == 0) {
+      return null;
     }
 
-    @Override
-    public String toString() {
-        return "BoardObservation [locationInObjectSpace="
-                + locationInObjectSpace
-                + ", locationInImageSpace="
-                + locationInImageSpace
-                + ", reprojectionErrors="
-                + reprojectionErrors
-                + ", optimisedCameraToObject="
-                + optimisedCameraToObject
-                + ", cornersUsed="
-                + cornersUsed
-                + ", snapshotName="
-                + snapshotName
-                + ", snapshotDataLocation="
-                + snapshotDataLocation
-                + "]";
+    return img;
+  }
+
+  /**
+   * Annotate the image with the detected corners, green for used, red for unused
+   *
+   * @return Annotated image, or null if the image could not be loaded. Caller is responsible for
+   *     releasing the Mat.
+   */
+  @JsonIgnore
+  public Mat annotateImage() {
+    var image = loadImage();
+
+    if (image == null) {
+      return null;
     }
 
-    @Override
-    public BoardObservation clone() {
-        try {
-            return (BoardObservation) super.clone();
-        } catch (CloneNotSupportedException e) {
-            System.err.println("Guhhh clone buh");
-            return null;
-        }
+    int thickness = Core.FILLED;
+    var diag = Math.hypot(image.width(), image.height());
+    int r = (int) Math.max(diag * 4.0 / 500.0, 3);
+    for (int i = 0; i < this.locationInImageSpace.size(); i++) {
+      var c = locationInImageSpace.get(i);
+
+      // -1, -1 means unused corner
+      if (c.x < 0 || c.y < 0) {
+        continue;
+      }
+
+      Scalar color;
+      if (cornersUsed[i]) {
+        color = ColorHelper.colorToScalar(Color.green);
+      } else {
+        color = ColorHelper.colorToScalar(Color.red);
+      }
+      Imgproc.circle(image, c, r, color, thickness);
     }
 
-    @JsonIgnore
-    /**
-     * Load the captured board image from disk. Allocates a new Mat, which the caller is responsible
-     * for releasing.
-     *
-     * @return The loaded image, or null if it could not be loaded.
-     */
-    public Mat loadImage() {
-        Mat img = Imgcodecs.imread(this.snapshotDataLocation.toString());
-        if (img == null || img.empty() || img.rows() == 0 || img.cols() == 0) {
-            return null;
-        }
+    return image;
+  }
 
-        return img;
-    }
-
-    /**
-     * Annotate the image with the detected corners, green for used, red for unused
-     *
-     * @return Annotated image, or null if the image could not be loaded. Caller is responsible for
-     *     releasing the Mat.
-     */
-    @JsonIgnore
-    public Mat annotateImage() {
-        var image = loadImage();
-
-        if (image == null) {
-            return null;
-        }
-
-        int thickness = Core.FILLED;
-        var diag = Math.hypot(image.width(), image.height());
-        int r = (int) Math.max(diag * 4.0 / 500.0, 3);
-        for (int i = 0; i < this.locationInImageSpace.size(); i++) {
-            var c = locationInImageSpace.get(i);
-
-            // -1, -1 means unused corner
-            if (c.x < 0 || c.y < 0) {
-                continue;
-            }
-
-            Scalar color;
-            if (cornersUsed[i]) {
-                color = ColorHelper.colorToScalar(Color.green);
-            } else {
-                color = ColorHelper.colorToScalar(Color.red);
-            }
-            Imgproc.circle(image, c, r, color, thickness);
-        }
-
-        return image;
-    }
-
-    /**
-     * Mean reprojection error for this observation, skipping corners marked as unused. The overall
-     * mean is calculated as the mean of each individual corner's reprojection error, or the distance
-     * in pixels between the observed and expected location.
-     *
-     * @return Mean reprojection error in pixels.
-     */
-    @JsonIgnore
-    double meanReprojectionError() {
-        return reprojectionErrors.stream()
-                .filter(pt -> cornersUsed[reprojectionErrors.indexOf(pt)])
-                .mapToDouble(pt -> Math.hypot(pt.x, pt.y))
-                .average()
-                .orElse(0);
-    }
+  /**
+   * Mean reprojection error for this observation, skipping corners marked as unused. The overall
+   * mean is calculated as the mean of each individual corner's reprojection error, or the distance
+   * in pixels between the observed and expected location.
+   *
+   * @return Mean reprojection error in pixels.
+   */
+  @JsonIgnore
+  double meanReprojectionError() {
+    return reprojectionErrors.stream()
+        .filter(pt -> cornersUsed[reprojectionErrors.indexOf(pt)])
+        .mapToDouble(pt -> Math.hypot(pt.x, pt.y))
+        .average()
+        .orElse(0);
+  }
 }

@@ -18,26 +18,26 @@
 package org.photonvision.common.hardware;
 
 public enum PhotonStatus {
-    // Nominal states
-    NT_CONNECTED_TARGETS_VISIBLE,
-    NT_CONNECTED_TARGETS_MISSING,
-    NT_DISCONNECTED_TARGETS_VISIBLE,
-    NT_DISCONNECTED_TARGETS_MISSING,
+  // Nominal states
+  NT_CONNECTED_TARGETS_VISIBLE,
+  NT_CONNECTED_TARGETS_MISSING,
+  NT_DISCONNECTED_TARGETS_VISIBLE,
+  NT_DISCONNECTED_TARGETS_MISSING,
 
-    // Error states
-    GENERIC_ERROR(true);
+  // Error states
+  GENERIC_ERROR(true);
 
-    final boolean error;
+  final boolean error;
 
-    PhotonStatus() {
-        this(false);
-    }
+  PhotonStatus() {
+    this(false);
+  }
 
-    PhotonStatus(boolean error) {
-        this.error = error;
-    }
+  PhotonStatus(boolean error) {
+    this.error = error;
+  }
 
-    boolean isError() {
-        return this.error;
-    }
+  boolean isError() {
+    return this.error;
+  }
 }

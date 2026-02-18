@@ -21,15 +21,15 @@ import org.photonvision.common.configuration.NeuralNetworkModelManager.Family;
 import org.photonvision.common.configuration.NeuralNetworkModelsSettings.ModelProperties;
 
 public interface Model {
-    public ObjectDetector load();
+  public ObjectDetector load();
 
-    public String getUID();
+  public String getUID();
 
-    public String getNickname();
+  public String getNickname();
 
-    public Family getFamily();
+  public Family getFamily();
 
-    public ModelProperties getProperties();
+  public ModelProperties getProperties();
 
-    public String toString();
+  public String toString();
 }

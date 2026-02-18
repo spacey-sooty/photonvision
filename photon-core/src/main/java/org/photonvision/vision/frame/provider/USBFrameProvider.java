@@ -30,132 +30,132 @@ import org.photonvision.vision.opencv.CVMat;
 import org.photonvision.vision.processes.VisionSourceSettables;
 
 public class USBFrameProvider extends CpuImageProcessor {
-    private final Logger logger;
+  private final Logger logger;
 
-    private UsbCamera camera = null;
-    private CvSink cvSink = null;
+  private UsbCamera camera = null;
+  private CvSink cvSink = null;
 
-    @SuppressWarnings("SpellCheckingInspection")
-    private VisionSourceSettables settables;
+  @SuppressWarnings("SpellCheckingInspection")
+  private VisionSourceSettables settables;
 
-    private Runnable connectedCallback;
+  private Runnable connectedCallback;
 
-    private long lastTime = 0;
+  private long lastTime = 0;
 
-    @SuppressWarnings("SpellCheckingInspection")
-    public USBFrameProvider(
-            UsbCamera camera, VisionSourceSettables visionSettables, Runnable connectedCallback) {
-        this.camera = camera;
-        this.cvSink = CameraServer.getVideo(this.camera);
-        this.logger =
-                new Logger(
-                        USBFrameProvider.class, visionSettables.getConfiguration().nickname, LogGroup.Camera);
-        this.cvSink.setEnabled(true);
+  @SuppressWarnings("SpellCheckingInspection")
+  public USBFrameProvider(
+      UsbCamera camera, VisionSourceSettables visionSettables, Runnable connectedCallback) {
+    this.camera = camera;
+    this.cvSink = CameraServer.getVideo(this.camera);
+    this.logger =
+        new Logger(
+            USBFrameProvider.class, visionSettables.getConfiguration().nickname, LogGroup.Camera);
+    this.cvSink.setEnabled(true);
 
-        this.settables = visionSettables;
+    this.settables = visionSettables;
 
-        this.connectedCallback = connectedCallback;
+    this.connectedCallback = connectedCallback;
+  }
+
+  @Override
+  public boolean checkCameraConnected() {
+    boolean connected = camera.isConnected();
+
+    if (!cameraPropertiesCached && connected) {
+      logger.info("Camera connected! running callback");
+      onCameraConnected();
     }
 
-    @Override
-    public boolean checkCameraConnected() {
-        boolean connected = camera.isConnected();
+    return connected;
+  }
 
-        if (!cameraPropertiesCached && connected) {
-            logger.info("Camera connected! running callback");
-            onCameraConnected();
-        }
+  final double CSCORE_DEFAULT_FRAME_TIMEOUT = 1.0 / 4.0;
 
-        return connected;
+  @Override
+  public CapturedFrame getInputMat() {
+    if (!cameraPropertiesCached && camera.isConnected()) {
+      onCameraConnected();
     }
 
-    final double CSCORE_DEFAULT_FRAME_TIMEOUT = 1.0 / 4.0;
+    if (m_blockForFrames) {
+      // We allocate memory so we don't fill a Mat in use by another thread (memory model is easier)
+      var mat = new CVMat();
+      // This is from wpi::Now, or WPIUtilJNI.now(). The epoch from grabFrame is uS since
+      // Hal::initialize was called
+      // TODO - under the hood, this incurs an extra copy. We should avoid this, if we
+      // can.
+      long captureTimeNs = cvSink.grabFrame(mat.getMat(), CSCORE_DEFAULT_FRAME_TIMEOUT) * 1000;
 
-    @Override
-    public CapturedFrame getInputMat() {
-        if (!cameraPropertiesCached && camera.isConnected()) {
-            onCameraConnected();
-        }
+      if (captureTimeNs == 0) {
+        var error = cvSink.getError();
+        logger.error("Error grabbing image: " + error);
+      }
 
-        if (m_blockForFrames) {
-            // We allocate memory so we don't fill a Mat in use by another thread (memory model is easier)
-            var mat = new CVMat();
-            // This is from wpi::Now, or WPIUtilJNI.now(). The epoch from grabFrame is uS since
-            // Hal::initialize was called
-            // TODO - under the hood, this incurs an extra copy. We should avoid this, if we
-            // can.
-            long captureTimeNs = cvSink.grabFrame(mat.getMat(), CSCORE_DEFAULT_FRAME_TIMEOUT) * 1000;
+      return new CapturedFrame(mat, settables.getFrameStaticProperties(), captureTimeNs);
+    } else {
+      // We allocate memory so we don't fill a Mat in use by another thread (memory model is easier)
+      // TODO - consider a frame pool
+      // TODO - getCurrentVideoMode is a JNI call for us, but profiling indicates it's fast
+      var cameraMode = settables.getCurrentVideoMode();
+      var frame = new RawFrame();
+      frame.setInfo(
+          cameraMode.width,
+          cameraMode.height,
+          // hard-coded 3 channel
+          cameraMode.width * 3,
+          PixelFormat.kBGR);
 
-            if (captureTimeNs == 0) {
-                var error = cvSink.getError();
-                logger.error("Error grabbing image: " + error);
-            }
+      // This is from wpi::Now, or WPIUtilJNI.now(). The epoch from grabFrame is uS since
+      // Hal::initialize was called
+      long captureTimeUs =
+          CscoreExtras.grabRawSinkFrameTimeoutLastTime(
+              cvSink.getHandle(), frame.getNativeObj(), CSCORE_DEFAULT_FRAME_TIMEOUT, lastTime);
+      lastTime = captureTimeUs;
 
-            return new CapturedFrame(mat, settables.getFrameStaticProperties(), captureTimeNs);
-        } else {
-            // We allocate memory so we don't fill a Mat in use by another thread (memory model is easier)
-            // TODO - consider a frame pool
-            // TODO - getCurrentVideoMode is a JNI call for us, but profiling indicates it's fast
-            var cameraMode = settables.getCurrentVideoMode();
-            var frame = new RawFrame();
-            frame.setInfo(
-                    cameraMode.width,
-                    cameraMode.height,
-                    // hard-coded 3 channel
-                    cameraMode.width * 3,
-                    PixelFormat.kBGR);
+      CVMat ret;
 
-            // This is from wpi::Now, or WPIUtilJNI.now(). The epoch from grabFrame is uS since
-            // Hal::initialize was called
-            long captureTimeUs =
-                    CscoreExtras.grabRawSinkFrameTimeoutLastTime(
-                            cvSink.getHandle(), frame.getNativeObj(), CSCORE_DEFAULT_FRAME_TIMEOUT, lastTime);
-            lastTime = captureTimeUs;
+      if (captureTimeUs == 0) {
+        var error = cvSink.getError();
+        logger.error("Error grabbing image: " + error);
 
-            CVMat ret;
+        frame.close();
+        ret = new CVMat();
+      } else {
+        // No error! yay
+        var mat = new Mat(CscoreExtras.wrapRawFrame(frame.getNativeObj()));
 
-            if (captureTimeUs == 0) {
-                var error = cvSink.getError();
-                logger.error("Error grabbing image: " + error);
+        ret = new CVMat(mat, frame);
+      }
 
-                frame.close();
-                ret = new CVMat();
-            } else {
-                // No error! yay
-                var mat = new Mat(CscoreExtras.wrapRawFrame(frame.getNativeObj()));
-
-                ret = new CVMat(mat, frame);
-            }
-
-            return new CapturedFrame(ret, settables.getFrameStaticProperties(), captureTimeUs * 1000);
-        }
+      return new CapturedFrame(ret, settables.getFrameStaticProperties(), captureTimeUs * 1000);
     }
+  }
 
-    @Override
-    public String getName() {
-        return "USBFrameProvider - " + cvSink.getName();
-    }
+  @Override
+  public String getName() {
+    return "USBFrameProvider - " + cvSink.getName();
+  }
 
-    @Override
-    public void release() {
-        CameraServer.removeServer(cvSink.getName());
-        cvSink.close();
-        cvSink = null;
-    }
+  @Override
+  public void release() {
+    CameraServer.removeServer(cvSink.getName());
+    cvSink.close();
+    cvSink = null;
+  }
 
-    @Override
-    public void onCameraConnected() {
-        super.onCameraConnected();
+  @Override
+  public void onCameraConnected() {
+    super.onCameraConnected();
 
-        this.connectedCallback.run();
-    }
+    this.connectedCallback.run();
+  }
 
-    @Override
-    public boolean isConnected() {
-        return camera.isConnected();
-    }
+  @Override
+  public boolean isConnected() {
+    return camera.isConnected();
+  }
 
-    public void updateSettables(VisionSourceSettables settables) {
-        this.settables = settables;
-    }
+  public void updateSettables(VisionSourceSettables settables) {
+    this.settables = settables;
+  }
 }

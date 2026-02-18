@@ -45,169 +45,169 @@ import org.photonvision.vision.pipeline.PipelineType;
 import org.photonvision.vision.pipeline.ReflectivePipelineSettings;
 
 public class SQLConfigTest {
-    @TempDir private Path tmpDir;
+  @TempDir private Path tmpDir;
 
-    @BeforeAll
-    public static void init() {
-        LoadJNI.loadLibraries();
+  @BeforeAll
+  public static void init() {
+    LoadJNI.loadLibraries();
+  }
+
+  @Test
+  @Order(1)
+  public void testMigration() {
+    SqlConfigProvider cfgLoader = new SqlConfigProvider(tmpDir);
+    cfgLoader.load();
+
+    assertEquals(
+        DatabaseSchema.migrations.length,
+        cfgLoader.getUserVersion(),
+        "Database isn't at the correct version");
+  }
+
+  @Test
+  @Order(2)
+  public void testLoad() {
+    var cfgLoader = new SqlConfigProvider(tmpDir);
+
+    cfgLoader.load();
+
+    var testCamCfg =
+        new CameraConfiguration(
+            PVCameraInfo.fromUsbCameraInfo(
+                new UsbCameraInfo(0, "/dev/videoN", "some_name", new String[0], -1, 01)));
+
+    testCamCfg.pipelineSettings =
+        List.of(
+            new ReflectivePipelineSettings(),
+            new AprilTagPipelineSettings(),
+            new ColoredShapePipelineSettings());
+
+    cfgLoader.getConfig().addCameraConfig(testCamCfg);
+    cfgLoader.getConfig().getNetworkConfig().ntServerAddress = "5940";
+    cfgLoader.saveToDisk();
+
+    cfgLoader.load();
+    System.out.println(cfgLoader.getConfig());
+
+    assertEquals(cfgLoader.getConfig().getNetworkConfig().ntServerAddress, "5940");
+  }
+
+  @Test
+  public void testLoad2024_3_1() throws IOException {
+    // Copy the 2024.3.1 config to a temp dir
+    FileUtils.copyDirectory(
+        TestUtils.getConfigDirectoriesPath(false)
+            .resolve("photonvision_config_from_v2024.3.1")
+            .toFile(),
+        tmpDir.resolve("photonvision_config_from_v2024.3.1").toFile());
+
+    var cfgLoader = new SqlConfigProvider(tmpDir.resolve("photonvision_config_from_v2024.3.1"));
+
+    assertDoesNotThrow(cfgLoader::load);
+
+    System.out.println(cfgLoader.getConfig());
+    for (var c : CameraQuirk.values()) {
+      assertDoesNotThrow(
+          () ->
+              cfgLoader
+                  .config
+                  .getCameraConfigurations()
+                  .get("Microsoft_LifeCam_HD-3000")
+                  .cameraQuirks
+                  .hasQuirk(c));
     }
+  }
 
-    @Test
-    @Order(1)
-    public void testMigration() {
-        SqlConfigProvider cfgLoader = new SqlConfigProvider(tmpDir);
-        cfgLoader.load();
+  void common2025p3p1Assertions(PhotonConfiguration config) {
+    // Make sure we got 8 cameras
+    assertEquals(8, config.getCameraConfigurations().size());
 
-        assertEquals(
-                DatabaseSchema.migrations.length,
-                cfgLoader.getUserVersion(),
-                "Database isn't at the correct version");
-    }
+    // Make sure exactly 2 have object detection pipelines
+    long count =
+        config.getCameraConfigurations().values().stream()
+            .filter(
+                c ->
+                    c.pipelineSettings.stream()
+                        .anyMatch(s -> s instanceof ObjectDetectionPipelineSettings))
+            .count();
+    assertEquals(2, count);
+  }
 
-    @Test
-    @Order(2)
-    public void testLoad() {
-        var cfgLoader = new SqlConfigProvider(tmpDir);
+  @Test
+  public void testLoadNewNNMM() throws JsonProcessingException, IOException {
+    var folder = tmpDir.resolve("2025.3.1-old-nnmm");
+    FileUtils.copyDirectory(
+        TestUtils.getConfigDirectoriesPath(false).resolve("2025.3.1-old-nnmm").toFile(),
+        folder.toFile());
 
-        cfgLoader.load();
+    var cfgManager = new ConfigManager(folder, new SqlConfigProvider(folder));
 
-        var testCamCfg =
-                new CameraConfiguration(
-                        PVCameraInfo.fromUsbCameraInfo(
-                                new UsbCameraInfo(0, "/dev/videoN", "some_name", new String[0], -1, 01)));
+    // Replace global configmanager
+    ConfigManager.INSTANCE = cfgManager;
 
-        testCamCfg.pipelineSettings =
-                List.of(
-                        new ReflectivePipelineSettings(),
-                        new AprilTagPipelineSettings(),
-                        new ColoredShapePipelineSettings());
+    assertDoesNotThrow(cfgManager::load);
 
-        cfgLoader.getConfig().addCameraConfig(testCamCfg);
-        cfgLoader.getConfig().getNetworkConfig().ntServerAddress = "5940";
-        cfgLoader.saveToDisk();
+    System.out.println(cfgManager.getConfig());
+    common2025p3p1Assertions(cfgManager.getConfig());
 
-        cfgLoader.load();
-        System.out.println(cfgLoader.getConfig());
+    // And we now see two models
+    NeuralNetworkModelManager.getInstance();
+    // force us to allow RKNN
+    NeuralNetworkModelManager.getInstance().supportedBackends.add(Family.RKNN);
+    NeuralNetworkModelManager.getInstance().discoverModels();
+    assertEquals(5, NeuralNetworkModelManager.getInstance().models.get(Family.RKNN).size());
 
-        assertEquals(cfgLoader.getConfig().getNetworkConfig().ntServerAddress, "5940");
-    }
+    ConfigManager.getInstance().saveToDisk();
 
-    @Test
-    public void testLoad2024_3_1() throws IOException {
-        // Copy the 2024.3.1 config to a temp dir
-        FileUtils.copyDirectory(
-                TestUtils.getConfigDirectoriesPath(false)
-                        .resolve("photonvision_config_from_v2024.3.1")
-                        .toFile(),
-                tmpDir.resolve("photonvision_config_from_v2024.3.1").toFile());
+    // Now that we have the config saved, load it again
+    var reloadedProvider = new SqlConfigProvider(folder);
+    reloadedProvider.load();
+    common2025p3p1Assertions(reloadedProvider.getConfig());
 
-        var cfgLoader = new SqlConfigProvider(tmpDir.resolve("photonvision_config_from_v2024.3.1"));
+    // And make sure NNPM has all 5 models
+    assertEquals(5, reloadedProvider.getConfig().neuralNetworkPropertyManager().getModels().length);
 
-        assertDoesNotThrow(cfgLoader::load);
+    ConfigManager.INSTANCE = null;
+  }
 
-        System.out.println(cfgLoader.getConfig());
-        for (var c : CameraQuirk.values()) {
-            assertDoesNotThrow(
-                    () ->
-                            cfgLoader
-                                    .config
-                                    .getCameraConfigurations()
-                                    .get("Microsoft_LifeCam_HD-3000")
-                                    .cameraQuirks
-                                    .hasQuirk(c));
+  @Test
+  public void testMaxDetectionsMigration() throws IOException {
+    var folder = tmpDir.resolve("2025.3.1-old-nnmm");
+    FileUtils.copyDirectory(
+        TestUtils.getConfigDirectoriesPath(false).resolve("2025.3.1-old-nnmm").toFile(),
+        folder.toFile());
+
+    var cfgManager = new ConfigManager(folder, new SqlConfigProvider(folder));
+
+    // Replace global configmanager
+    ConfigManager.INSTANCE = cfgManager;
+
+    assertDoesNotThrow(cfgManager::load);
+
+    Collection<CameraConfiguration> cameraConfigs =
+        cfgManager.getConfig().getCameraConfigurations().values();
+
+    for (CameraConfiguration cc : cameraConfigs) {
+      for (CVPipelineSettings ps : cc.pipelineSettings) {
+        if (ps instanceof AdvancedPipelineSettings adps) {
+          AdvancedPipelineSettings finalPs = adps;
+          if (finalPs.pipelineType.equals(PipelineType.AprilTag)
+              || finalPs.pipelineType.equals(PipelineType.Aruco)) {
+            // Tag pipelines don't have max detections, so skip
+            continue;
+          } else if (finalPs.pipelineNickname.equals("TEST MIGRATION")) {
+            // This is our colored shape pipeline that we set to 1 before saving
+            assertEquals(1, finalPs.outputMaximumTargets);
+          } else {
+            // All others should be at default 20
+            assertEquals(20, finalPs.outputMaximumTargets);
+          }
+        } else {
+          System.out.println("Skipping pipeline settings type: " + ps.getClass().getSimpleName());
         }
+      }
     }
 
-    void common2025p3p1Assertions(PhotonConfiguration config) {
-        // Make sure we got 8 cameras
-        assertEquals(8, config.getCameraConfigurations().size());
-
-        // Make sure exactly 2 have object detection pipelines
-        long count =
-                config.getCameraConfigurations().values().stream()
-                        .filter(
-                                c ->
-                                        c.pipelineSettings.stream()
-                                                .anyMatch(s -> s instanceof ObjectDetectionPipelineSettings))
-                        .count();
-        assertEquals(2, count);
-    }
-
-    @Test
-    public void testLoadNewNNMM() throws JsonProcessingException, IOException {
-        var folder = tmpDir.resolve("2025.3.1-old-nnmm");
-        FileUtils.copyDirectory(
-                TestUtils.getConfigDirectoriesPath(false).resolve("2025.3.1-old-nnmm").toFile(),
-                folder.toFile());
-
-        var cfgManager = new ConfigManager(folder, new SqlConfigProvider(folder));
-
-        // Replace global configmanager
-        ConfigManager.INSTANCE = cfgManager;
-
-        assertDoesNotThrow(cfgManager::load);
-
-        System.out.println(cfgManager.getConfig());
-        common2025p3p1Assertions(cfgManager.getConfig());
-
-        // And we now see two models
-        NeuralNetworkModelManager.getInstance();
-        // force us to allow RKNN
-        NeuralNetworkModelManager.getInstance().supportedBackends.add(Family.RKNN);
-        NeuralNetworkModelManager.getInstance().discoverModels();
-        assertEquals(5, NeuralNetworkModelManager.getInstance().models.get(Family.RKNN).size());
-
-        ConfigManager.getInstance().saveToDisk();
-
-        // Now that we have the config saved, load it again
-        var reloadedProvider = new SqlConfigProvider(folder);
-        reloadedProvider.load();
-        common2025p3p1Assertions(reloadedProvider.getConfig());
-
-        // And make sure NNPM has all 5 models
-        assertEquals(5, reloadedProvider.getConfig().neuralNetworkPropertyManager().getModels().length);
-
-        ConfigManager.INSTANCE = null;
-    }
-
-    @Test
-    public void testMaxDetectionsMigration() throws IOException {
-        var folder = tmpDir.resolve("2025.3.1-old-nnmm");
-        FileUtils.copyDirectory(
-                TestUtils.getConfigDirectoriesPath(false).resolve("2025.3.1-old-nnmm").toFile(),
-                folder.toFile());
-
-        var cfgManager = new ConfigManager(folder, new SqlConfigProvider(folder));
-
-        // Replace global configmanager
-        ConfigManager.INSTANCE = cfgManager;
-
-        assertDoesNotThrow(cfgManager::load);
-
-        Collection<CameraConfiguration> cameraConfigs =
-                cfgManager.getConfig().getCameraConfigurations().values();
-
-        for (CameraConfiguration cc : cameraConfigs) {
-            for (CVPipelineSettings ps : cc.pipelineSettings) {
-                if (ps instanceof AdvancedPipelineSettings adps) {
-                    AdvancedPipelineSettings finalPs = adps;
-                    if (finalPs.pipelineType.equals(PipelineType.AprilTag)
-                            || finalPs.pipelineType.equals(PipelineType.Aruco)) {
-                        // Tag pipelines don't have max detections, so skip
-                        continue;
-                    } else if (finalPs.pipelineNickname.equals("TEST MIGRATION")) {
-                        // This is our colored shape pipeline that we set to 1 before saving
-                        assertEquals(1, finalPs.outputMaximumTargets);
-                    } else {
-                        // All others should be at default 20
-                        assertEquals(20, finalPs.outputMaximumTargets);
-                    }
-                } else {
-                    System.out.println("Skipping pipeline settings type: " + ps.getClass().getSimpleName());
-                }
-            }
-        }
-
-        ConfigManager.INSTANCE = null;
-    }
+    ConfigManager.INSTANCE = null;
+  }
 }

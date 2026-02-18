@@ -22,66 +22,66 @@ import org.photonvision.common.logging.Logger;
 import org.photonvision.common.util.ShellExec;
 
 public class CustomAdapter {
-    private static final Logger logger = new Logger(CustomAdapter.class, LogGroup.General);
-    private static final ThreadLocal<ShellExec> runCommand =
-            ThreadLocal.withInitial(() -> new ShellExec(true, true));
+  private static final Logger logger = new Logger(CustomAdapter.class, LogGroup.General);
+  private static final ThreadLocal<ShellExec> runCommand =
+      ThreadLocal.withInitial(() -> new ShellExec(true, true));
 
-    protected final String getGPIOCommand;
-    protected final String setGPIOCommand;
-    protected final String setPWMCommand;
-    protected final String setPWMFrequencyCommand;
-    protected final String releaseGPIOCommand;
+  protected final String getGPIOCommand;
+  protected final String setGPIOCommand;
+  protected final String setPWMCommand;
+  protected final String setPWMFrequencyCommand;
+  protected final String releaseGPIOCommand;
 
-    public CustomAdapter(
-            String getGPIOCommand,
-            String setGPIOCommand,
-            String setPWMCommand,
-            String setPWMFrequencyCommand,
-            String releaseGPIOCommand) {
-        this.getGPIOCommand = getGPIOCommand;
-        this.setGPIOCommand = setGPIOCommand;
-        this.setPWMCommand = setPWMCommand;
-        this.setPWMFrequencyCommand = setPWMFrequencyCommand;
-        this.releaseGPIOCommand = releaseGPIOCommand;
+  public CustomAdapter(
+      String getGPIOCommand,
+      String setGPIOCommand,
+      String setPWMCommand,
+      String setPWMFrequencyCommand,
+      String releaseGPIOCommand) {
+    this.getGPIOCommand = getGPIOCommand;
+    this.setGPIOCommand = setGPIOCommand;
+    this.setPWMCommand = setPWMCommand;
+    this.setPWMFrequencyCommand = setPWMFrequencyCommand;
+    this.releaseGPIOCommand = releaseGPIOCommand;
+  }
+
+  protected static String execute(String command) {
+    try {
+      runCommand.get().executeBashCommand(command);
+    } catch (Exception e) {
+      logger.error("Exception caught running GPIO command \"" + command + "\"", e);
+      return "";
     }
+    return runCommand.get().getOutput();
+  }
 
-    protected static String execute(String command) {
-        try {
-            runCommand.get().executeBashCommand(command);
-        } catch (Exception e) {
-            logger.error("Exception caught running GPIO command \"" + command + "\"", e);
-            return "";
-        }
-        return runCommand.get().getOutput();
-    }
+  public boolean getGPIO(int gpio) {
+    return Boolean.parseBoolean(
+        execute(getGPIOCommand.replace("{p}", Integer.toString(gpio))).trim());
+  }
 
-    public boolean getGPIO(int gpio) {
-        return Boolean.parseBoolean(
-                execute(getGPIOCommand.replace("{p}", Integer.toString(gpio))).trim());
-    }
+  public void setGPIO(int gpio, boolean state) {
+    execute(
+        setGPIOCommand
+            .replace("{p}", Integer.toString(gpio))
+            .replace("{s}", Boolean.toString(state)));
+  }
 
-    public void setGPIO(int gpio, boolean state) {
-        execute(
-                setGPIOCommand
-                        .replace("{p}", Integer.toString(gpio))
-                        .replace("{s}", Boolean.toString(state)));
-    }
+  public void setPWM(int gpio, double value) {
+    execute(
+        setPWMCommand
+            .replace("{p}", Integer.toString(gpio))
+            .replace("{v}", Double.toString(value)));
+  }
 
-    public void setPWM(int gpio, double value) {
-        execute(
-                setPWMCommand
-                        .replace("{p}", Integer.toString(gpio))
-                        .replace("{v}", Double.toString(value)));
-    }
+  public void setPwmFrequency(int gpio, int frequency) {
+    execute(
+        setPWMFrequencyCommand
+            .replace("{p}", Integer.toString(gpio))
+            .replace("{f}", Integer.toString(frequency)));
+  }
 
-    public void setPwmFrequency(int gpio, int frequency) {
-        execute(
-                setPWMFrequencyCommand
-                        .replace("{p}", Integer.toString(gpio))
-                        .replace("{f}", Integer.toString(frequency)));
-    }
-
-    public void releaseGPIO(int gpio) {
-        execute(releaseGPIOCommand.replace("{p}", Integer.toString(gpio)));
-    }
+  public void releaseGPIO(int gpio) {
+    execute(releaseGPIOCommand.replace("{p}", Integer.toString(gpio)));
+  }
 }

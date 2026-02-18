@@ -23,69 +23,69 @@ import java.util.List;
 import org.photonvision.common.util.TimedTaskManager;
 
 public class StatusLED implements AutoCloseable {
-    public final LED redLED;
-    public final LED greenLED;
-    public final LED blueLED;
-    protected int blinkCounter;
+  public final LED redLED;
+  public final LED greenLED;
+  public final LED blueLED;
+  protected int blinkCounter;
 
-    protected PhotonStatus status = PhotonStatus.GENERIC_ERROR;
+  protected PhotonStatus status = PhotonStatus.GENERIC_ERROR;
 
-    public StatusLED(
-            NativeDeviceFactoryInterface deviceFactory, List<Integer> statusLedPins, boolean activeHigh) {
-        // fill unassigned pins with -1 to disable
-        if (statusLedPins.size() != 3) {
-            for (int i = 0; i < 3 - statusLedPins.size(); i++) {
-                statusLedPins.add(-1);
-            }
-        }
-
-        // Outputs are active-low for a common-anode RGB LED
-        redLED = new LED(deviceFactory, statusLedPins.get(0), activeHigh, false);
-        greenLED = new LED(deviceFactory, statusLedPins.get(1), activeHigh, false);
-        blueLED = new LED(deviceFactory, statusLedPins.get(2), activeHigh, false);
-
-        TimedTaskManager.getInstance().addTask("StatusLEDUpdate", this::updateLED, 150);
+  public StatusLED(
+      NativeDeviceFactoryInterface deviceFactory, List<Integer> statusLedPins, boolean activeHigh) {
+    // fill unassigned pins with -1 to disable
+    if (statusLedPins.size() != 3) {
+      for (int i = 0; i < 3 - statusLedPins.size(); i++) {
+        statusLedPins.add(-1);
+      }
     }
 
-    protected void setRGB(boolean r, boolean g, boolean b) {
-        redLED.setOn(r);
-        greenLED.setOn(g);
-        blueLED.setOn(b);
+    // Outputs are active-low for a common-anode RGB LED
+    redLED = new LED(deviceFactory, statusLedPins.get(0), activeHigh, false);
+    greenLED = new LED(deviceFactory, statusLedPins.get(1), activeHigh, false);
+    blueLED = new LED(deviceFactory, statusLedPins.get(2), activeHigh, false);
+
+    TimedTaskManager.getInstance().addTask("StatusLEDUpdate", this::updateLED, 150);
+  }
+
+  protected void setRGB(boolean r, boolean g, boolean b) {
+    redLED.setOn(r);
+    greenLED.setOn(g);
+    blueLED.setOn(b);
+  }
+
+  public void setStatus(PhotonStatus status) {
+    this.status = status;
+  }
+
+  protected void updateLED() {
+    boolean blink = blinkCounter > 0;
+
+    switch (status) {
+      case NT_CONNECTED_TARGETS_VISIBLE ->
+          // Blue
+          setRGB(false, false, true);
+      case NT_CONNECTED_TARGETS_MISSING ->
+          // Blinking Green
+          setRGB(false, blink, false);
+      case NT_DISCONNECTED_TARGETS_VISIBLE ->
+          // Blinking Blue
+          setRGB(false, false, blink);
+      case NT_DISCONNECTED_TARGETS_MISSING ->
+          // Blinking Yellow
+          setRGB(blink, blink, false);
+      case GENERIC_ERROR ->
+          // Blinking Red
+          setRGB(blink, false, false);
     }
 
-    public void setStatus(PhotonStatus status) {
-        this.status = status;
-    }
+    blinkCounter++;
+    blinkCounter %= 3;
+  }
 
-    protected void updateLED() {
-        boolean blink = blinkCounter > 0;
-
-        switch (status) {
-            case NT_CONNECTED_TARGETS_VISIBLE ->
-                    // Blue
-                    setRGB(false, false, true);
-            case NT_CONNECTED_TARGETS_MISSING ->
-                    // Blinking Green
-                    setRGB(false, blink, false);
-            case NT_DISCONNECTED_TARGETS_VISIBLE ->
-                    // Blinking Blue
-                    setRGB(false, false, blink);
-            case NT_DISCONNECTED_TARGETS_MISSING ->
-                    // Blinking Yellow
-                    setRGB(blink, blink, false);
-            case GENERIC_ERROR ->
-                    // Blinking Red
-                    setRGB(blink, false, false);
-        }
-
-        blinkCounter++;
-        blinkCounter %= 3;
-    }
-
-    @Override
-    public void close() {
-        redLED.close();
-        greenLED.close();
-        blueLED.close();
-    }
+  @Override
+  public void close() {
+    redLED.close();
+    greenLED.close();
+    blueLED.close();
+  }
 }
