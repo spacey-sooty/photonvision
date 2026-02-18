@@ -20,19 +20,19 @@ package org.photonvision.common.hardware.metrics;
 import org.photonvision.common.hardware.metrics.proto.DeviceMetricsProto;
 
 public record DeviceMetrics(
-    double cpuTemp,
-    double cpuUtil,
-    String cpuThr,
-    double ramMem,
-    double ramUtil,
-    double gpuMem,
-    double gpuMemUtil,
-    double diskUtilPct,
-    double diskUsableSpace,
-    double[] npuUsage,
-    String ipAddress,
-    double uptime,
-    double sentBitRate,
-    double recvBitRate) {
-  public static final DeviceMetricsProto proto = new DeviceMetricsProto();
+        double cpuTemp,
+        double cpuUtil,
+        String cpuThr,
+        double ramMem,
+        double ramUtil,
+        double gpuMem,
+        double gpuMemUtil,
+        double diskUtilPct,
+        double diskUsableSpace,
+        double[] npuUsage,
+        String ipAddress,
+        double uptime,
+        double sentBitRate,
+        double recvBitRate) {
+    public static final DeviceMetricsProto proto = new DeviceMetricsProto();
 }

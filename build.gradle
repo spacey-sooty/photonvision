@@ -66,6 +66,7 @@ spotless {
         }
         toggleOffOn()
         googleJavaFormat()
+        leadingSpacesToTabs(2)
         leadingTabsToSpaces(4)
         removeUnusedImports()
         trimTrailingWhitespace()

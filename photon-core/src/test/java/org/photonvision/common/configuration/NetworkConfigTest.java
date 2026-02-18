@@ -28,28 +28,28 @@ import org.junit.jupiter.api.Test;
 import org.photonvision.common.util.TestUtils;
 
 public class NetworkConfigTest {
-  @Test
-  public void testSerialization() throws IOException {
-    var mapper = new ObjectMapper();
-    var path = Path.of("netTest.json");
-    mapper.writeValue(path.toFile(), new NetworkConfig());
-    assertDoesNotThrow(() -> mapper.readValue(path.toFile(), NetworkConfig.class));
-    new File("netTest.json").delete();
-  }
+    @Test
+    public void testSerialization() throws IOException {
+        var mapper = new ObjectMapper();
+        var path = Path.of("netTest.json");
+        mapper.writeValue(path.toFile(), new NetworkConfig());
+        assertDoesNotThrow(() -> mapper.readValue(path.toFile(), NetworkConfig.class));
+        new File("netTest.json").delete();
+    }
 
-  @Test
-  public void testDeserializeTeamNumberOrNtServerAddress() {
-    {
-      var folder = TestUtils.getResourcesFolderPath(true).resolve("network-old-team-number");
-      var configMgr = new ConfigManager(folder, new LegacyConfigProvider(folder));
-      configMgr.load();
-      assertEquals("9999", configMgr.getConfig().getNetworkConfig().ntServerAddress);
+    @Test
+    public void testDeserializeTeamNumberOrNtServerAddress() {
+        {
+            var folder = TestUtils.getResourcesFolderPath(true).resolve("network-old-team-number");
+            var configMgr = new ConfigManager(folder, new LegacyConfigProvider(folder));
+            configMgr.load();
+            assertEquals("9999", configMgr.getConfig().getNetworkConfig().ntServerAddress);
+        }
+        {
+            var folder = TestUtils.getResourcesFolderPath(true).resolve("network-new-team-number");
+            var configMgr = new ConfigManager(folder, new LegacyConfigProvider(folder));
+            configMgr.load();
+            assertEquals("9999", configMgr.getConfig().getNetworkConfig().ntServerAddress);
+        }
     }
-    {
-      var folder = TestUtils.getResourcesFolderPath(true).resolve("network-new-team-number");
-      var configMgr = new ConfigManager(folder, new LegacyConfigProvider(folder));
-      configMgr.load();
-      assertEquals("9999", configMgr.getConfig().getNetworkConfig().ntServerAddress);
-    }
-  }
 }

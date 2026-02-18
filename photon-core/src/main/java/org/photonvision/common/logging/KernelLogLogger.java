@@ -26,38 +26,38 @@ import org.photonvision.jni.QueuedFileLogger;
  * ecosystem
  */
 public class KernelLogLogger {
-  private static KernelLogLogger INSTANCE;
+    private static KernelLogLogger INSTANCE;
 
-  public static KernelLogLogger getInstance() {
-    if (INSTANCE == null) {
-      INSTANCE = new KernelLogLogger();
-    }
-    return INSTANCE;
-  }
-
-  QueuedFileLogger listener = null;
-  Logger logger = new Logger(KernelLogLogger.class, LogGroup.General);
-
-  public KernelLogLogger() {
-    if (Platform.isLinux()) {
-      listener = new QueuedFileLogger("/var/log/kern.log");
-    } else {
-      System.out.println("NOT for klogs");
+    public static KernelLogLogger getInstance() {
+        if (INSTANCE == null) {
+            INSTANCE = new KernelLogLogger();
+        }
+        return INSTANCE;
     }
 
-    // arbitrary frequency to grab logs. The underlying native buffer will grow unbounded without
-    // this, lol
-    TimedTaskManager.getInstance().addTask("outputPrintk", this::outputNewPrintks, 1000);
-  }
+    QueuedFileLogger listener = null;
+    Logger logger = new Logger(KernelLogLogger.class, LogGroup.General);
 
-  public void outputNewPrintks() {
-    if (listener == null) {
-      return;
+    public KernelLogLogger() {
+        if (Platform.isLinux()) {
+            listener = new QueuedFileLogger("/var/log/kern.log");
+        } else {
+            System.out.println("NOT for klogs");
+        }
+
+        // arbitrary frequency to grab logs. The underlying native buffer will grow unbounded without
+        // this, lol
+        TimedTaskManager.getInstance().addTask("outputPrintk", this::outputNewPrintks, 1000);
     }
 
-    for (var msg : listener.getNewlines()) {
-      // We currently set all logs to debug regardless of their actual level
-      logger.log(msg, LogLevel.DEBUG);
+    public void outputNewPrintks() {
+        if (listener == null) {
+            return;
+        }
+
+        for (var msg : listener.getNewlines()) {
+            // We currently set all logs to debug regardless of their actual level
+            logger.log(msg, LogLevel.DEBUG);
+        }
     }
-  }
 }

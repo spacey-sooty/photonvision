@@ -24,78 +24,78 @@ import org.photonvision.vision.opencv.CVMat;
 import org.photonvision.vision.opencv.Releasable;
 
 public class Frame implements Releasable {
-  private static final Logger logger = new Logger(Frame.class, LogGroup.General);
+    private static final Logger logger = new Logger(Frame.class, LogGroup.General);
 
-  public final long sequenceID;
-  public final long timestampNanos;
+    public final long sequenceID;
+    public final long timestampNanos;
 
-  // Frame should at _least_ contain the thresholded frame, and sometimes the color image
-  public final CVMat colorImage;
-  public final CVMat processedImage;
-  public final FrameThresholdType type;
+    // Frame should at _least_ contain the thresholded frame, and sometimes the color image
+    public final CVMat colorImage;
+    public final CVMat processedImage;
+    public final FrameThresholdType type;
 
-  public final FrameStaticProperties frameStaticProperties;
+    public final FrameStaticProperties frameStaticProperties;
 
-  public Frame(
-      long sequenceID,
-      CVMat color,
-      CVMat processed,
-      FrameThresholdType type,
-      long timestampNanos,
-      FrameStaticProperties frameStaticProperties) {
-    this.sequenceID = sequenceID;
-    this.colorImage = color;
-    this.processedImage = processed;
-    this.type = type;
-    this.timestampNanos = timestampNanos;
-    this.frameStaticProperties = frameStaticProperties;
+    public Frame(
+            long sequenceID,
+            CVMat color,
+            CVMat processed,
+            FrameThresholdType type,
+            long timestampNanos,
+            FrameStaticProperties frameStaticProperties) {
+        this.sequenceID = sequenceID;
+        this.colorImage = color;
+        this.processedImage = processed;
+        this.type = type;
+        this.timestampNanos = timestampNanos;
+        this.frameStaticProperties = frameStaticProperties;
 
-    logger.trace(
-        () ->
-            "Allocated Frame "
-                + sequenceID
-                + "; color image "
-                + colorImage.matId
-                + "; processed "
-                + processedImage.matId);
-  }
+        logger.trace(
+                () ->
+                        "Allocated Frame "
+                                + sequenceID
+                                + "; color image "
+                                + colorImage.matId
+                                + "; processed "
+                                + processedImage.matId);
+    }
 
-  public Frame(
-      long sequenceID,
-      CVMat color,
-      CVMat processed,
-      FrameThresholdType processType,
-      FrameStaticProperties frameStaticProperties) {
-    this(sequenceID, color, processed, processType, MathUtils.wpiNanoTime(), frameStaticProperties);
-  }
+    public Frame(
+            long sequenceID,
+            CVMat color,
+            CVMat processed,
+            FrameThresholdType processType,
+            FrameStaticProperties frameStaticProperties) {
+        this(sequenceID, color, processed, processType, MathUtils.wpiNanoTime(), frameStaticProperties);
+    }
 
-  public Frame() {
-    this(
-        -1,
-        new CVMat(),
-        new CVMat(),
-        FrameThresholdType.NONE,
-        MathUtils.wpiNanoTime(),
-        new FrameStaticProperties(0, 0, 0, null));
-  }
+    public Frame() {
+        this(
+                -1,
+                new CVMat(),
+                new CVMat(),
+                FrameThresholdType.NONE,
+                MathUtils.wpiNanoTime(),
+                new FrameStaticProperties(0, 0, 0, null));
+    }
 
-  public void copyTo(Frame destFrame) {
-    colorImage.getMat().copyTo(destFrame.colorImage.getMat());
-    processedImage.getMat().copyTo(destFrame.processedImage.getMat());
-  }
+    public void copyTo(Frame destFrame) {
+        colorImage.getMat().copyTo(destFrame.colorImage.getMat());
+        processedImage.getMat().copyTo(destFrame.processedImage.getMat());
+    }
 
-  @Override
-  public void release() {
-    logger.trace(
-        () ->
-            "Releasing Frame "
-                + sequenceID
-                + "; color image "
-                + colorImage.matId
-                + "; processed "
-                + processedImage.matId);
+    @Override
+    public void release() {
+        logger.trace(
+                () ->
+                        "Releasing Frame "
+                                + sequenceID
+                                + "; color image "
+                                + colorImage.matId
+                                + "; processed "
+                                + processedImage.matId);
 
-    colorImage.release();
-    processedImage.release();
-  }
+        colorImage.release();
+        processedImage.release();
+    }
 }

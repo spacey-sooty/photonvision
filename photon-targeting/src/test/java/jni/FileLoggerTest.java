@@ -31,32 +31,32 @@ import org.photonvision.jni.LibraryLoader;
 import org.photonvision.jni.QueuedFileLogger;
 
 public class FileLoggerTest {
-  @BeforeAll
-  public static void load() throws IOException {
-    if (!LibraryLoader.loadWpiLibraries()) {
-      fail();
-    }
-    RuntimeLoader.loadLibrary("photontargetingJNI");
+    @BeforeAll
+    public static void load() throws IOException {
+        if (!LibraryLoader.loadWpiLibraries()) {
+            fail();
+        }
+        RuntimeLoader.loadLibrary("photontargetingJNI");
 
-    HAL.initialize(1000, 0);
-  }
-
-  @AfterAll
-  public static void teardown() {
-    HAL.shutdown();
-  }
-
-  @Test
-  public void smoketest() throws InterruptedException {
-    assumeTrue(Platform.isLinux());
-
-    var logger = new QueuedFileLogger("/var/log/kern.log");
-    for (int i = 0; i < 1; i++) {
-      for (var line : logger.getNewlines()) {
-        System.out.println(" ->:" + line);
-      }
+        HAL.initialize(1000, 0);
     }
 
-    logger.stop();
-  }
+    @AfterAll
+    public static void teardown() {
+        HAL.shutdown();
+    }
+
+    @Test
+    public void smoketest() throws InterruptedException {
+        assumeTrue(Platform.isLinux());
+
+        var logger = new QueuedFileLogger("/var/log/kern.log");
+        for (int i = 0; i < 1; i++) {
+            for (var line : logger.getNewlines()) {
+                System.out.println(" ->:" + line);
+            }
+        }
+
+        logger.stop();
+    }
 }

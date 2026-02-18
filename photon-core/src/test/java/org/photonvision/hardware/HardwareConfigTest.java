@@ -31,23 +31,23 @@ import org.photonvision.common.hardware.gpio.CustomDeviceFactory;
 import org.photonvision.common.util.TestUtils;
 
 public class HardwareConfigTest {
-  @Test
-  public void loadJson() {
-    try {
-      System.out.println("Loading Hardware configs...");
-      var config =
-          new ObjectMapper().readValue(TestUtils.getHardwareConfigJson(), HardwareConfig.class);
-      assertEquals(config.deviceName, "PhotonVision");
-      assertEquals(config.deviceLogoPath, "photonvision.png");
-      assertEquals(config.supportURL, "https://support.photonvision.com");
-      // Ensure defaults are not null
-      assertArrayEquals(config.ledPins.stream().mapToInt(i -> i).toArray(), new int[] {2, 13});
-      NativeDeviceFactoryInterface deviceFactory = HardwareManager.configureCustomGPIO(config);
-      assertTrue(deviceFactory instanceof CustomDeviceFactory);
-      deviceFactory.close();
+    @Test
+    public void loadJson() {
+        try {
+            System.out.println("Loading Hardware configs...");
+            var config =
+                    new ObjectMapper().readValue(TestUtils.getHardwareConfigJson(), HardwareConfig.class);
+            assertEquals(config.deviceName, "PhotonVision");
+            assertEquals(config.deviceLogoPath, "photonvision.png");
+            assertEquals(config.supportURL, "https://support.photonvision.com");
+            // Ensure defaults are not null
+            assertArrayEquals(config.ledPins.stream().mapToInt(i -> i).toArray(), new int[] {2, 13});
+            NativeDeviceFactoryInterface deviceFactory = HardwareManager.configureCustomGPIO(config);
+            assertTrue(deviceFactory instanceof CustomDeviceFactory);
+            deviceFactory.close();
 
-    } catch (IOException e) {
-      e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
-  }
 }

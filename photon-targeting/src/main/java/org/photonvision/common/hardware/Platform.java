@@ -26,291 +26,291 @@ import java.util.function.Supplier;
 
 @SuppressWarnings({"unused", "doclint"})
 public enum Platform {
-  // WPILib Supported (JNI)
-  WINDOWS_64("Windows x64", Platform::getUnknownModel, false, OSType.WINDOWS, true),
-  LINUX_32("Linux x86", Platform::getUnknownModel, false, OSType.LINUX, true),
-  LINUX_64("Linux x64", Platform::getUnknownModel, false, OSType.LINUX, true),
-  LINUX_RASPBIAN32(
-      "Linux Raspbian 32-bit",
-      Platform::getLinuxDeviceTreeModel,
-      true,
-      OSType.LINUX,
-      true), // Raspberry Pi 3/4 with a 32-bit image
-  LINUX_RASPBIAN64(
-      "Linux Raspbian 64-bit",
-      Platform::getLinuxDeviceTreeModel,
-      true,
-      OSType.LINUX,
-      true), // Raspberry Pi 3/4 with a 64-bit image
-  LINUX_RK3588_64(
-      "Linux AARCH 64-bit with RK3588",
-      Platform::getLinuxDeviceTreeModel,
-      false,
-      OSType.LINUX,
-      true),
-  LINUX_QCS6490(
-      "Linux AARCH 64-bit with QCS6490",
-      Platform::getLinuxDeviceTreeModel,
-      false,
-      OSType.LINUX,
-      true), // QCS6490 SBCs
-  LINUX_AARCH64(
-      "Linux AARCH64",
-      Platform::getLinuxDeviceTreeModel,
-      false,
-      OSType.LINUX,
-      true), // Jetson Nano, Jetson TX2
+    // WPILib Supported (JNI)
+    WINDOWS_64("Windows x64", Platform::getUnknownModel, false, OSType.WINDOWS, true),
+    LINUX_32("Linux x86", Platform::getUnknownModel, false, OSType.LINUX, true),
+    LINUX_64("Linux x64", Platform::getUnknownModel, false, OSType.LINUX, true),
+    LINUX_RASPBIAN32(
+            "Linux Raspbian 32-bit",
+            Platform::getLinuxDeviceTreeModel,
+            true,
+            OSType.LINUX,
+            true), // Raspberry Pi 3/4 with a 32-bit image
+    LINUX_RASPBIAN64(
+            "Linux Raspbian 64-bit",
+            Platform::getLinuxDeviceTreeModel,
+            true,
+            OSType.LINUX,
+            true), // Raspberry Pi 3/4 with a 64-bit image
+    LINUX_RK3588_64(
+            "Linux AARCH 64-bit with RK3588",
+            Platform::getLinuxDeviceTreeModel,
+            false,
+            OSType.LINUX,
+            true),
+    LINUX_QCS6490(
+            "Linux AARCH 64-bit with QCS6490",
+            Platform::getLinuxDeviceTreeModel,
+            false,
+            OSType.LINUX,
+            true), // QCS6490 SBCs
+    LINUX_AARCH64(
+            "Linux AARCH64",
+            Platform::getLinuxDeviceTreeModel,
+            false,
+            OSType.LINUX,
+            true), // Jetson Nano, Jetson TX2
 
-  // PhotonVision Supported (Manual build/install)
-  LINUX_ARM64(
-      "Linux ARM64", Platform::getLinuxDeviceTreeModel, false, OSType.LINUX, true), // ODROID C2, N2
+    // PhotonVision Supported (Manual build/install)
+    LINUX_ARM64(
+            "Linux ARM64", Platform::getLinuxDeviceTreeModel, false, OSType.LINUX, true), // ODROID C2, N2
 
-  // Completely unsupported
-  WINDOWS_32("Windows x86", Platform::getUnknownModel, false, OSType.WINDOWS, false),
-  MACOS("Mac OS", Platform::getUnknownModel, false, OSType.MACOS, false),
-  LINUX_ARM32(
-      "Linux ARM32", Platform::getUnknownModel, false, OSType.LINUX, false), // ODROID XU4, C1+
-  UNKNOWN("Unsupported Platform", Platform::getUnknownModel, false, OSType.UNKNOWN, false);
+    // Completely unsupported
+    WINDOWS_32("Windows x86", Platform::getUnknownModel, false, OSType.WINDOWS, false),
+    MACOS("Mac OS", Platform::getUnknownModel, false, OSType.MACOS, false),
+    LINUX_ARM32(
+            "Linux ARM32", Platform::getUnknownModel, false, OSType.LINUX, false), // ODROID XU4, C1+
+    UNKNOWN("Unsupported Platform", Platform::getUnknownModel, false, OSType.UNKNOWN, false);
 
-  public enum OSType {
-    WINDOWS,
-    LINUX,
-    MACOS,
-    UNKNOWN
-  }
-
-  public final String description;
-  public final String hardwareModel;
-  public final boolean isPi;
-  public final OSType osType;
-  public final boolean isSupported;
-
-  // Set once at init, shouldn't be needed after.
-  private static Platform currentPlatform = getCurrentPlatform();
-  private static boolean override = false;
-
-  Platform(
-      String description,
-      Supplier<String> getHardwareModel,
-      boolean isPi,
-      OSType osType,
-      boolean isSupported) {
-    this.description = description;
-    this.hardwareModel = getHardwareModel.get();
-    this.isPi = isPi;
-    this.osType = osType;
-    this.isSupported = isSupported;
-  }
-
-  public static void overridePlatform(Platform platform) {
-    currentPlatform = platform;
-    override = true;
-  }
-
-  //////////////////////////////////////////////////////
-  // Public API
-
-  // Checks specifically if unix shell and API are supported
-  public static boolean isLinux() {
-    return currentPlatform.osType == OSType.LINUX;
-  }
-
-  public static boolean isRK3588() {
-    return currentPlatform == LINUX_RK3588_64
-        || Platform.isOrangePi()
-        || Platform.isCoolPi4b()
-        || Platform.isRock5C()
-        || fileHasText("/proc/device-tree/compatible", "rk3588");
-  }
-
-  public static boolean isQCS6490() {
-    return currentPlatform == LINUX_QCS6490 || Platform.isRubik();
-  }
-
-  public static boolean isRaspberryPi() {
-    return currentPlatform.isPi;
-  }
-
-  public static String getPlatformName() {
-    if (currentPlatform.equals(UNKNOWN)) {
-      return UnknownPlatformString;
-    } else {
-      return currentPlatform.description;
-    }
-  }
-
-  public static String getHardwareModel() {
-    return currentPlatform.hardwareModel;
-  }
-
-  public static boolean isSupported() {
-    return currentPlatform.isSupported;
-  }
-
-  public static boolean isAthena() {
-    File runRobotFile = new File("/usr/local/frc/bin/frcRunRobot.sh");
-    return runRobotFile.exists();
-  }
-
-  public static boolean isWindows() {
-    var p = getCurrentPlatform();
-    return (p == WINDOWS_32 || p == WINDOWS_64);
-  }
-
-  //////////////////////////////////////////////////////
-
-  // Debug info related to unknown platforms for debug help
-  private static final String OS_NAME = System.getProperty("os.name");
-  private static final String OS_ARCH = System.getProperty("os.arch");
-  private static final String UnknownPlatformString =
-      String.format("Unknown Platform. OS: %s, Architecture: %s", OS_NAME, OS_ARCH);
-  private static final String UnknownDeviceModelString = "Unknown";
-
-  public static Platform getCurrentPlatform() {
-    if (override) {
-      return currentPlatform;
+    public enum OSType {
+        WINDOWS,
+        LINUX,
+        MACOS,
+        UNKNOWN
     }
 
-    String OS_NAME;
-    if (Platform.OS_NAME != null) {
-      OS_NAME = Platform.OS_NAME;
-    } else {
-      OS_NAME = System.getProperty("os.name");
+    public final String description;
+    public final String hardwareModel;
+    public final boolean isPi;
+    public final OSType osType;
+    public final boolean isSupported;
+
+    // Set once at init, shouldn't be needed after.
+    private static Platform currentPlatform = getCurrentPlatform();
+    private static boolean override = false;
+
+    Platform(
+            String description,
+            Supplier<String> getHardwareModel,
+            boolean isPi,
+            OSType osType,
+            boolean isSupported) {
+        this.description = description;
+        this.hardwareModel = getHardwareModel.get();
+        this.isPi = isPi;
+        this.osType = osType;
+        this.isSupported = isSupported;
     }
 
-    String OS_ARCH;
-    if (Platform.OS_ARCH != null) {
-      OS_ARCH = Platform.OS_ARCH;
-    } else {
-      OS_ARCH = System.getProperty("os.arch");
+    public static void overridePlatform(Platform platform) {
+        currentPlatform = platform;
+        override = true;
     }
 
-    if (OS_NAME.startsWith("Windows")) {
-      if (OS_ARCH.equals("x86") || OS_ARCH.equals("i386")) {
-        return WINDOWS_32;
-      } else if (OS_ARCH.equals("amd64") || OS_ARCH.equals("x86_64")) {
-        return WINDOWS_64;
-      } else {
-        // please don't try this
-        return UNKNOWN;
-      }
+    //////////////////////////////////////////////////////
+    // Public API
+
+    // Checks specifically if unix shell and API are supported
+    public static boolean isLinux() {
+        return currentPlatform.osType == OSType.LINUX;
     }
 
-    if (OS_NAME.startsWith("Mac")) {
-      // TODO - once we have real support, this might have to be more granular
-      return MACOS;
+    public static boolean isRK3588() {
+        return currentPlatform == LINUX_RK3588_64
+                || Platform.isOrangePi()
+                || Platform.isCoolPi4b()
+                || Platform.isRock5C()
+                || fileHasText("/proc/device-tree/compatible", "rk3588");
     }
 
-    if (OS_NAME.startsWith("Linux")) {
-      if (isPiSBC()) {
-        if (OS_ARCH.equals("arm") || OS_ARCH.equals("arm32")) {
-          return LINUX_RASPBIAN32;
-        } else if (OS_ARCH.equals("aarch64") || OS_ARCH.equals("arm64")) {
-          return LINUX_RASPBIAN64;
+    public static boolean isQCS6490() {
+        return currentPlatform == LINUX_QCS6490 || Platform.isRubik();
+    }
+
+    public static boolean isRaspberryPi() {
+        return currentPlatform.isPi;
+    }
+
+    public static String getPlatformName() {
+        if (currentPlatform.equals(UNKNOWN)) {
+            return UnknownPlatformString;
         } else {
-          // Unknown/exotic installation
-          return UNKNOWN;
+            return currentPlatform.description;
         }
-      } else if (isJetsonSBC()) {
-        if (OS_ARCH.equals("aarch64") || OS_ARCH.equals("arm64")) {
-          // TODO - do we need to check OS version?
-          return LINUX_AARCH64;
-        } else {
-          // Unknown/exotic installation
-          return UNKNOWN;
-        }
-      } else if (OS_ARCH.equals("amd64") || OS_ARCH.equals("x86_64")) {
-        return LINUX_64;
-      } else if (OS_ARCH.equals("x86") || OS_ARCH.equals("i386")) {
-        return LINUX_32;
-      } else if (OS_ARCH.equals("aarch64") || OS_ARCH.equals("arm64")) {
-        // TODO - os detection needed?
-        if (isRK3588()) {
-          return LINUX_RK3588_64;
-        } else if (isQCS6490()) {
-          return LINUX_QCS6490;
+    }
 
-        } else {
-          return LINUX_AARCH64;
+    public static String getHardwareModel() {
+        return currentPlatform.hardwareModel;
+    }
+
+    public static boolean isSupported() {
+        return currentPlatform.isSupported;
+    }
+
+    public static boolean isAthena() {
+        File runRobotFile = new File("/usr/local/frc/bin/frcRunRobot.sh");
+        return runRobotFile.exists();
+    }
+
+    public static boolean isWindows() {
+        var p = getCurrentPlatform();
+        return (p == WINDOWS_32 || p == WINDOWS_64);
+    }
+
+    //////////////////////////////////////////////////////
+
+    // Debug info related to unknown platforms for debug help
+    private static final String OS_NAME = System.getProperty("os.name");
+    private static final String OS_ARCH = System.getProperty("os.arch");
+    private static final String UnknownPlatformString =
+            String.format("Unknown Platform. OS: %s, Architecture: %s", OS_NAME, OS_ARCH);
+    private static final String UnknownDeviceModelString = "Unknown";
+
+    public static Platform getCurrentPlatform() {
+        if (override) {
+            return currentPlatform;
         }
-      } else if (OS_ARCH.equals("arm") || OS_ARCH.equals("arm32")) {
-        return LINUX_ARM32;
-      } else {
-        // Unknown or otherwise unsupported platform
+
+        String OS_NAME;
+        if (Platform.OS_NAME != null) {
+            OS_NAME = Platform.OS_NAME;
+        } else {
+            OS_NAME = System.getProperty("os.name");
+        }
+
+        String OS_ARCH;
+        if (Platform.OS_ARCH != null) {
+            OS_ARCH = Platform.OS_ARCH;
+        } else {
+            OS_ARCH = System.getProperty("os.arch");
+        }
+
+        if (OS_NAME.startsWith("Windows")) {
+            if (OS_ARCH.equals("x86") || OS_ARCH.equals("i386")) {
+                return WINDOWS_32;
+            } else if (OS_ARCH.equals("amd64") || OS_ARCH.equals("x86_64")) {
+                return WINDOWS_64;
+            } else {
+                // please don't try this
+                return UNKNOWN;
+            }
+        }
+
+        if (OS_NAME.startsWith("Mac")) {
+            // TODO - once we have real support, this might have to be more granular
+            return MACOS;
+        }
+
+        if (OS_NAME.startsWith("Linux")) {
+            if (isPiSBC()) {
+                if (OS_ARCH.equals("arm") || OS_ARCH.equals("arm32")) {
+                    return LINUX_RASPBIAN32;
+                } else if (OS_ARCH.equals("aarch64") || OS_ARCH.equals("arm64")) {
+                    return LINUX_RASPBIAN64;
+                } else {
+                    // Unknown/exotic installation
+                    return UNKNOWN;
+                }
+            } else if (isJetsonSBC()) {
+                if (OS_ARCH.equals("aarch64") || OS_ARCH.equals("arm64")) {
+                    // TODO - do we need to check OS version?
+                    return LINUX_AARCH64;
+                } else {
+                    // Unknown/exotic installation
+                    return UNKNOWN;
+                }
+            } else if (OS_ARCH.equals("amd64") || OS_ARCH.equals("x86_64")) {
+                return LINUX_64;
+            } else if (OS_ARCH.equals("x86") || OS_ARCH.equals("i386")) {
+                return LINUX_32;
+            } else if (OS_ARCH.equals("aarch64") || OS_ARCH.equals("arm64")) {
+                // TODO - os detection needed?
+                if (isRK3588()) {
+                    return LINUX_RK3588_64;
+                } else if (isQCS6490()) {
+                    return LINUX_QCS6490;
+
+                } else {
+                    return LINUX_AARCH64;
+                }
+            } else if (OS_ARCH.equals("arm") || OS_ARCH.equals("arm32")) {
+                return LINUX_ARM32;
+            } else {
+                // Unknown or otherwise unsupported platform
+                return Platform.UNKNOWN;
+            }
+        }
+
+        // If we fall through all the way to here,
         return Platform.UNKNOWN;
-      }
     }
 
-    // If we fall through all the way to here,
-    return Platform.UNKNOWN;
-  }
-
-  // Check for various known SBC types
-  private static boolean isPiSBC() {
-    return fileHasText("/proc/cpuinfo", "Raspberry Pi");
-  }
-
-  private static boolean isOrangePi() {
-    return fileHasText("/proc/device-tree/model", "Orange Pi 5");
-  }
-
-  private static boolean isRock5C() {
-    return fileHasText("/proc/device-tree/model", "ROCK 5C");
-  }
-
-  private static boolean isCoolPi4b() {
-    return fileHasText("/proc/device-tree/model", "CoolPi 4B");
-  }
-
-  private static boolean isJetsonSBC() {
-    // https://forums.developer.nvidia.com/t/how-to-recognize-jetson-nano-device/146624
-    return fileHasText("/proc/device-tree/model", "NVIDIA Jetson");
-  }
-
-  private static boolean isRubik() {
-    return fileHasText("/proc/device-tree/model", "RUBIK");
-  }
-
-  static String getLinuxDeviceTreeModel() {
-    var deviceTreeModelPath = Paths.get("/proc/device-tree/model");
-    try {
-      if (Files.exists(deviceTreeModelPath)) {
-        return Files.readString(deviceTreeModelPath).trim();
-      }
-    } catch (Exception ex) {
-      return UnknownDeviceModelString;
+    // Check for various known SBC types
+    private static boolean isPiSBC() {
+        return fileHasText("/proc/cpuinfo", "Raspberry Pi");
     }
-    return UnknownDeviceModelString;
-  }
 
-  static String getUnknownModel() {
-    return UnknownDeviceModelString;
-  }
-
-  // Checks for various names of linux OS
-  private static boolean isStretch() {
-    // TODO - this is a total guess
-    return fileHasText("/etc/os-release", "Stretch");
-  }
-
-  private static boolean isBuster() {
-    // TODO - this is a total guess
-    return fileHasText("/etc/os-release", "Buster");
-  }
-
-  private static boolean fileHasText(String filename, String text) {
-    try (BufferedReader reader = Files.newBufferedReader(Paths.get(filename))) {
-      while (true) {
-        String value = reader.readLine();
-        if (value == null) {
-          return false;
-
-        } else if (value.contains(text)) {
-          return true;
-        } // else, next line
-      }
-    } catch (IOException ex) {
-      return false;
+    private static boolean isOrangePi() {
+        return fileHasText("/proc/device-tree/model", "Orange Pi 5");
     }
-  }
+
+    private static boolean isRock5C() {
+        return fileHasText("/proc/device-tree/model", "ROCK 5C");
+    }
+
+    private static boolean isCoolPi4b() {
+        return fileHasText("/proc/device-tree/model", "CoolPi 4B");
+    }
+
+    private static boolean isJetsonSBC() {
+        // https://forums.developer.nvidia.com/t/how-to-recognize-jetson-nano-device/146624
+        return fileHasText("/proc/device-tree/model", "NVIDIA Jetson");
+    }
+
+    private static boolean isRubik() {
+        return fileHasText("/proc/device-tree/model", "RUBIK");
+    }
+
+    static String getLinuxDeviceTreeModel() {
+        var deviceTreeModelPath = Paths.get("/proc/device-tree/model");
+        try {
+            if (Files.exists(deviceTreeModelPath)) {
+                return Files.readString(deviceTreeModelPath).trim();
+            }
+        } catch (Exception ex) {
+            return UnknownDeviceModelString;
+        }
+        return UnknownDeviceModelString;
+    }
+
+    static String getUnknownModel() {
+        return UnknownDeviceModelString;
+    }
+
+    // Checks for various names of linux OS
+    private static boolean isStretch() {
+        // TODO - this is a total guess
+        return fileHasText("/etc/os-release", "Stretch");
+    }
+
+    private static boolean isBuster() {
+        // TODO - this is a total guess
+        return fileHasText("/etc/os-release", "Buster");
+    }
+
+    private static boolean fileHasText(String filename, String text) {
+        try (BufferedReader reader = Files.newBufferedReader(Paths.get(filename))) {
+            while (true) {
+                String value = reader.readLine();
+                if (value == null) {
+                    return false;
+
+                } else if (value.contains(text)) {
+                    return true;
+                } // else, next line
+            }
+        } catch (IOException ex) {
+            return false;
+        }
+    }
 }

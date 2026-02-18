@@ -22,40 +22,40 @@ import com.diozero.internal.spi.AbstractDevice;
 import com.diozero.internal.spi.GpioDigitalOutputDeviceInterface;
 
 public class CustomDigitalOutputDevice extends AbstractDevice
-    implements GpioDigitalOutputDeviceInterface {
-  protected final CustomAdapter adapter;
-  protected final int gpio;
-  private boolean state;
+        implements GpioDigitalOutputDeviceInterface {
+    protected final CustomAdapter adapter;
+    protected final int gpio;
+    private boolean state;
 
-  public CustomDigitalOutputDevice(
-      CustomDeviceFactory deviceFactory, String key, int gpio, boolean initialValue) {
-    super(key, deviceFactory);
+    public CustomDigitalOutputDevice(
+            CustomDeviceFactory deviceFactory, String key, int gpio, boolean initialValue) {
+        super(key, deviceFactory);
 
-    this.adapter = deviceFactory.adapter;
-    this.gpio = gpio;
-    this.state = initialValue;
+        this.adapter = deviceFactory.adapter;
+        this.gpio = gpio;
+        this.state = initialValue;
 
-    setValue(initialValue);
-  }
+        setValue(initialValue);
+    }
 
-  @Override
-  public boolean getValue() throws RuntimeIOException {
-    return state;
-  }
+    @Override
+    public boolean getValue() throws RuntimeIOException {
+        return state;
+    }
 
-  @Override
-  public int getGpio() {
-    return gpio;
-  }
+    @Override
+    public int getGpio() {
+        return gpio;
+    }
 
-  @Override
-  public void setValue(boolean value) throws RuntimeIOException {
-    state = value;
-    adapter.setGPIO(gpio, value);
-  }
+    @Override
+    public void setValue(boolean value) throws RuntimeIOException {
+        state = value;
+        adapter.setGPIO(gpio, value);
+    }
 
-  @Override
-  protected void closeDevice() throws RuntimeIOException {
-    adapter.releaseGPIO(gpio);
-  }
+    @Override
+    protected void closeDevice() throws RuntimeIOException {
+        adapter.releaseGPIO(gpio);
+    }
 }

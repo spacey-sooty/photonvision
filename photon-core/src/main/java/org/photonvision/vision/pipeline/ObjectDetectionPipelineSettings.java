@@ -22,23 +22,23 @@ import org.photonvision.common.configuration.NeuralNetworkModelsSettings;
 import org.photonvision.vision.objects.Model;
 
 public class ObjectDetectionPipelineSettings extends AdvancedPipelineSettings {
-  public double confidence;
-  public double nms; // non maximal suppression
-  public NeuralNetworkModelsSettings.ModelProperties model;
+    public double confidence;
+    public double nms; // non maximal suppression
+    public NeuralNetworkModelsSettings.ModelProperties model;
 
-  public ObjectDetectionPipelineSettings() {
-    super();
-    this.pipelineType = PipelineType.ObjectDetection; // TODO: FIX this
-    this.outputMaximumTargets = 20;
-    cameraExposureRaw = 20;
-    cameraAutoExposure = false;
-    ledMode = false;
-    confidence = .9;
-    nms = .45;
-    model =
-        NeuralNetworkModelManager.getInstance()
-            .getDefaultModel()
-            .map(Model::getProperties)
-            .orElse(null);
-  }
+    public ObjectDetectionPipelineSettings() {
+        super();
+        this.pipelineType = PipelineType.ObjectDetection; // TODO: FIX this
+        this.outputMaximumTargets = 20;
+        cameraExposureRaw = 20;
+        cameraAutoExposure = false;
+        ledMode = false;
+        confidence = .9;
+        nms = .45;
+        model =
+                NeuralNetworkModelManager.getInstance()
+                        .getDefaultModel()
+                        .map(Model::getProperties)
+                        .orElse(null);
+    }
 }

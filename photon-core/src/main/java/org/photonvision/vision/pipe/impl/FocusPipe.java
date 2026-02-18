@@ -25,32 +25,32 @@ import org.opencv.imgproc.Imgproc;
 import org.photonvision.vision.pipe.CVPipe;
 
 public class FocusPipe extends CVPipe<Mat, FocusPipe.FocusResult, FocusPipe.FocusParams> {
-  // cache these
-  MatOfDouble mean = new MatOfDouble();
-  MatOfDouble stddev = new MatOfDouble();
+    // cache these
+    MatOfDouble mean = new MatOfDouble();
+    MatOfDouble stddev = new MatOfDouble();
 
-  @Override
-  protected FocusResult process(Mat in) {
-    var outputMat = new Mat();
+    @Override
+    protected FocusResult process(Mat in) {
+        var outputMat = new Mat();
 
-    Imgproc.Laplacian(in, outputMat, CvType.CV_64F, 3);
+        Imgproc.Laplacian(in, outputMat, CvType.CV_64F, 3);
 
-    Core.meanStdDev(outputMat, mean, stddev);
-    var sd = stddev.get(0, 0)[0];
-    var variance = sd * sd;
+        Core.meanStdDev(outputMat, mean, stddev);
+        var sd = stddev.get(0, 0)[0];
+        var variance = sd * sd;
 
-    return new FocusResult(outputMat, variance);
-  }
-
-  public static class FocusResult {
-    public final Mat frame;
-    public final double variance;
-
-    public FocusResult(Mat frame, double variance) {
-      this.frame = frame;
-      this.variance = variance;
+        return new FocusResult(outputMat, variance);
     }
-  }
 
-  public static class FocusParams {}
+    public static class FocusResult {
+        public final Mat frame;
+        public final double variance;
+
+        public FocusResult(Mat frame, double variance) {
+            this.frame = frame;
+            this.variance = variance;
+        }
+    }
+
+    public static class FocusParams {}
 }

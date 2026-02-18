@@ -23,37 +23,37 @@ import org.photonvision.jni.CombinedRuntimeLoader;
 import org.photonvision.jni.LibraryLoader;
 
 public class LoadJNI {
-  private static HashMap<JNITypes, Boolean> loadedMap = new HashMap<>();
+    private static HashMap<JNITypes, Boolean> loadedMap = new HashMap<>();
 
-  public enum JNITypes {
-    RUBIK_DETECTOR("tensorflowlite", "tensorflowlite_c", "external_delegate", "rubik_jni"),
-    RKNN_DETECTOR("rga", "rknnrt", "rknn_jni"),
-    MRCAL("mrcal_jni"),
-    LIBCAMERA("photonlibcamera");
+    public enum JNITypes {
+        RUBIK_DETECTOR("tensorflowlite", "tensorflowlite_c", "external_delegate", "rubik_jni"),
+        RKNN_DETECTOR("rga", "rknnrt", "rknn_jni"),
+        MRCAL("mrcal_jni"),
+        LIBCAMERA("photonlibcamera");
 
-    public final String[] libraries;
+        public final String[] libraries;
 
-    JNITypes(String... libraries) {
-      this.libraries = libraries;
-    }
-  }
-
-  public static synchronized void forceLoad(JNITypes type) throws IOException {
-    loadLibraries();
-
-    if (loadedMap.getOrDefault(type, false)) {
-      return;
+        JNITypes(String... libraries) {
+            this.libraries = libraries;
+        }
     }
 
-    CombinedRuntimeLoader.loadLibraries(LoadJNI.class, type.libraries);
-    loadedMap.put(type, true);
-  }
+    public static synchronized void forceLoad(JNITypes type) throws IOException {
+        loadLibraries();
 
-  public static boolean loadLibraries() {
-    return LibraryLoader.loadWpiLibraries() && LibraryLoader.loadTargeting();
-  }
+        if (loadedMap.getOrDefault(type, false)) {
+            return;
+        }
 
-  public static boolean hasLoaded(JNITypes t) {
-    return loadedMap.getOrDefault(t, false);
-  }
+        CombinedRuntimeLoader.loadLibraries(LoadJNI.class, type.libraries);
+        loadedMap.put(type, true);
+    }
+
+    public static boolean loadLibraries() {
+        return LibraryLoader.loadWpiLibraries() && LibraryLoader.loadTargeting();
+    }
+
+    public static boolean hasLoaded(JNITypes t) {
+        return loadedMap.getOrDefault(t, false);
+    }
 }

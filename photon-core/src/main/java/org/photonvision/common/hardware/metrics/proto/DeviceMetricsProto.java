@@ -23,55 +23,55 @@ import org.photonvision.proto.Photon.ProtobufDeviceMetrics;
 import us.hebi.quickbuf.Descriptors.Descriptor;
 
 public class DeviceMetricsProto implements Protobuf<DeviceMetrics, ProtobufDeviceMetrics> {
-  @Override
-  public Class<DeviceMetrics> getTypeClass() {
-    return DeviceMetrics.class;
-  }
+    @Override
+    public Class<DeviceMetrics> getTypeClass() {
+        return DeviceMetrics.class;
+    }
 
-  @Override
-  public Descriptor getDescriptor() {
-    return ProtobufDeviceMetrics.getDescriptor();
-  }
+    @Override
+    public Descriptor getDescriptor() {
+        return ProtobufDeviceMetrics.getDescriptor();
+    }
 
-  @Override
-  public ProtobufDeviceMetrics createMessage() {
-    return ProtobufDeviceMetrics.newInstance();
-  }
+    @Override
+    public ProtobufDeviceMetrics createMessage() {
+        return ProtobufDeviceMetrics.newInstance();
+    }
 
-  @Override
-  public DeviceMetrics unpack(ProtobufDeviceMetrics msg) {
-    return new DeviceMetrics(
-        msg.getCpuTemp(),
-        msg.getCpuUtil(),
-        msg.getCpuThr(),
-        msg.getRamMem(),
-        msg.getRamUtil(),
-        msg.getGpuMem(),
-        msg.getGpuMemUtil(),
-        msg.getDiskUtilPct(),
-        msg.getDiskUsableSpace(),
-        msg.getNpuUsage().toArray(),
-        msg.getIpAddress(),
-        msg.getUptime(),
-        msg.getSentBitRate(),
-        msg.getRecvBitRate());
-  }
+    @Override
+    public DeviceMetrics unpack(ProtobufDeviceMetrics msg) {
+        return new DeviceMetrics(
+                msg.getCpuTemp(),
+                msg.getCpuUtil(),
+                msg.getCpuThr(),
+                msg.getRamMem(),
+                msg.getRamUtil(),
+                msg.getGpuMem(),
+                msg.getGpuMemUtil(),
+                msg.getDiskUtilPct(),
+                msg.getDiskUsableSpace(),
+                msg.getNpuUsage().toArray(),
+                msg.getIpAddress(),
+                msg.getUptime(),
+                msg.getSentBitRate(),
+                msg.getRecvBitRate());
+    }
 
-  @Override
-  public void pack(ProtobufDeviceMetrics msg, DeviceMetrics value) {
-    msg.setCpuTemp(value.cpuTemp());
-    msg.setCpuUtil(value.cpuUtil());
-    msg.setRamMem(value.ramMem());
-    msg.setCpuThr(value.cpuThr());
-    msg.setUptime(value.uptime());
-    msg.setGpuMem(value.gpuMem());
-    msg.setRamUtil(value.ramUtil());
-    msg.setGpuMemUtil(value.gpuMemUtil());
-    msg.setDiskUtilPct(value.diskUtilPct());
-    msg.setDiskUsableSpace(value.diskUsableSpace());
-    msg.addAllNpuUsage(value.npuUsage());
-    msg.setIpAddress(value.ipAddress());
-    msg.setSentBitRate(value.sentBitRate());
-    msg.setRecvBitRate(value.recvBitRate());
-  }
+    @Override
+    public void pack(ProtobufDeviceMetrics msg, DeviceMetrics value) {
+        msg.setCpuTemp(value.cpuTemp());
+        msg.setCpuUtil(value.cpuUtil());
+        msg.setRamMem(value.ramMem());
+        msg.setCpuThr(value.cpuThr());
+        msg.setUptime(value.uptime());
+        msg.setGpuMem(value.gpuMem());
+        msg.setRamUtil(value.ramUtil());
+        msg.setGpuMemUtil(value.gpuMemUtil());
+        msg.setDiskUtilPct(value.diskUtilPct());
+        msg.setDiskUsableSpace(value.diskUsableSpace());
+        msg.addAllNpuUsage(value.npuUsage());
+        msg.setIpAddress(value.ipAddress());
+        msg.setSentBitRate(value.sentBitRate());
+        msg.setRecvBitRate(value.recvBitRate());
+    }
 }

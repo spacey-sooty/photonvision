@@ -57,137 +57,137 @@ import org.photonvision.timesync.TimeSyncSingleton;
 
 /** Represents a camera that is connected to PhotonVision. */
 public class PhotonCamera implements AutoCloseable {
-  private static int InstanceCount = 1;
-  public static final String kTableName = "photonvision";
-  private static final String PHOTON_ALERT_GROUP = "PhotonAlerts";
+    private static int InstanceCount = 1;
+    public static final String kTableName = "photonvision";
+    private static final String PHOTON_ALERT_GROUP = "PhotonAlerts";
 
-  private final NetworkTable cameraTable;
-  PacketSubscriber<PhotonPipelineResult> resultSubscriber;
-  BooleanPublisher driverModePublisher;
-  BooleanSubscriber driverModeSubscriber;
-  IntegerPublisher fpsLimitPublisher;
-  IntegerSubscriber fpsLimitSubscriber;
-  StringSubscriber versionEntry;
-  IntegerEntry inputSaveImgEntry, outputSaveImgEntry;
-  IntegerPublisher pipelineIndexRequest, ledModeRequest;
-  IntegerSubscriber pipelineIndexState, ledModeState;
-  IntegerSubscriber heartbeatSubscriber;
-  DoubleArraySubscriber cameraIntrinsicsSubscriber;
-  DoubleArraySubscriber cameraDistortionSubscriber;
-  MultiSubscriber topicNameSubscriber;
-  NetworkTable rootPhotonTable;
+    private final NetworkTable cameraTable;
+    PacketSubscriber<PhotonPipelineResult> resultSubscriber;
+    BooleanPublisher driverModePublisher;
+    BooleanSubscriber driverModeSubscriber;
+    IntegerPublisher fpsLimitPublisher;
+    IntegerSubscriber fpsLimitSubscriber;
+    StringSubscriber versionEntry;
+    IntegerEntry inputSaveImgEntry, outputSaveImgEntry;
+    IntegerPublisher pipelineIndexRequest, ledModeRequest;
+    IntegerSubscriber pipelineIndexState, ledModeState;
+    IntegerSubscriber heartbeatSubscriber;
+    DoubleArraySubscriber cameraIntrinsicsSubscriber;
+    DoubleArraySubscriber cameraDistortionSubscriber;
+    MultiSubscriber topicNameSubscriber;
+    NetworkTable rootPhotonTable;
 
-  @Override
-  public void close() {
-    resultSubscriber.close();
-    driverModePublisher.close();
-    driverModeSubscriber.close();
-    fpsLimitPublisher.close();
-    fpsLimitSubscriber.close();
-    versionEntry.close();
-    inputSaveImgEntry.close();
-    outputSaveImgEntry.close();
-    pipelineIndexRequest.close();
-    pipelineIndexState.close();
-    ledModeRequest.close();
-    ledModeState.close();
-    pipelineIndexRequest.close();
-    cameraIntrinsicsSubscriber.close();
-    cameraDistortionSubscriber.close();
-    topicNameSubscriber.close();
-  }
+    @Override
+    public void close() {
+        resultSubscriber.close();
+        driverModePublisher.close();
+        driverModeSubscriber.close();
+        fpsLimitPublisher.close();
+        fpsLimitSubscriber.close();
+        versionEntry.close();
+        inputSaveImgEntry.close();
+        outputSaveImgEntry.close();
+        pipelineIndexRequest.close();
+        pipelineIndexState.close();
+        ledModeRequest.close();
+        ledModeState.close();
+        pipelineIndexRequest.close();
+        cameraIntrinsicsSubscriber.close();
+        cameraDistortionSubscriber.close();
+        topicNameSubscriber.close();
+    }
 
-  private final String path;
-  private final String name;
+    private final String path;
+    private final String name;
 
-  private static boolean VERSION_CHECK_ENABLED = true;
-  private static long VERSION_CHECK_INTERVAL = 5;
-  double lastVersionCheckTime = 0;
+    private static boolean VERSION_CHECK_ENABLED = true;
+    private static long VERSION_CHECK_INTERVAL = 5;
+    double lastVersionCheckTime = 0;
 
-  private long prevHeartbeatValue = -1;
-  private double prevHeartbeatChangeTime = 0;
-  private static final double HEARTBEAT_DEBOUNCE_SEC = 0.5;
+    private long prevHeartbeatValue = -1;
+    private double prevHeartbeatChangeTime = 0;
+    private static final double HEARTBEAT_DEBOUNCE_SEC = 0.5;
 
-  double prevTimeSyncWarnTime = 0;
-  private static final double WARN_DEBOUNCE_SEC = 5;
+    double prevTimeSyncWarnTime = 0;
+    private static final double WARN_DEBOUNCE_SEC = 5;
 
-  private final Alert disconnectAlert;
-  private final Alert timesyncAlert;
+    private final Alert disconnectAlert;
+    private final Alert timesyncAlert;
 
-  /**
-   * Sets whether or not coprocessor version checks will occur. Setting this to true will silence
-   * all console warnings about coproccessor connection, so be careful when enabling this and ensure
-   * all your coprocessors are communicating to the robot properly and everything has matching
-   * versions.
-   *
-   * @param enabled Whether or not to enable coprocessor version checks
-   */
-  public static void setVersionCheckEnabled(boolean enabled) {
-    VERSION_CHECK_ENABLED = enabled;
-  }
+    /**
+     * Sets whether or not coprocessor version checks will occur. Setting this to true will silence
+     * all console warnings about coproccessor connection, so be careful when enabling this and ensure
+     * all your coprocessors are communicating to the robot properly and everything has matching
+     * versions.
+     *
+     * @param enabled Whether or not to enable coprocessor version checks
+     */
+    public static void setVersionCheckEnabled(boolean enabled) {
+        VERSION_CHECK_ENABLED = enabled;
+    }
 
-  /**
-   * Constructs a PhotonCamera from a root table.
-   *
-   * @param instance The NetworkTableInstance to pull data from. This can be a custom instance in
-   *     simulation, but should *usually* be the default NTInstance from
-   *     NetworkTableInstance::getDefault
-   * @param cameraName The name of the camera, as seen in the UI.
-   */
-  public PhotonCamera(NetworkTableInstance instance, String cameraName) {
-    name = cameraName;
-    disconnectAlert =
-        new Alert(
-            PHOTON_ALERT_GROUP, "PhotonCamera '" + name + "' is disconnected.", AlertType.kWarning);
-    timesyncAlert = new Alert(PHOTON_ALERT_GROUP, "", AlertType.kWarning);
-    rootPhotonTable = instance.getTable(kTableName);
-    this.cameraTable = rootPhotonTable.getSubTable(cameraName);
-    path = cameraTable.getPath();
-    var rawBytesEntry =
-        cameraTable
-            .getRawTopic("rawBytes")
-            .subscribe(
-                PhotonPipelineResult.photonStruct.getTypeString(),
-                new byte[0],
-                PubSubOption.periodic(0.01),
-                PubSubOption.sendAll(true),
-                PubSubOption.pollStorage(20));
-    resultSubscriber = new PacketSubscriber<>(rawBytesEntry, PhotonPipelineResult.photonStruct);
-    driverModePublisher = cameraTable.getBooleanTopic("driverModeRequest").publish();
-    driverModeSubscriber = cameraTable.getBooleanTopic("driverMode").subscribe(false);
-    fpsLimitPublisher = cameraTable.getIntegerTopic("fpsLimitRequest").publish();
-    fpsLimitSubscriber = cameraTable.getIntegerTopic("fpsLimit").subscribe(-1);
-    inputSaveImgEntry = cameraTable.getIntegerTopic("inputSaveImgCmd").getEntry(0);
-    outputSaveImgEntry = cameraTable.getIntegerTopic("outputSaveImgCmd").getEntry(0);
-    pipelineIndexRequest = cameraTable.getIntegerTopic("pipelineIndexRequest").publish();
-    pipelineIndexState = cameraTable.getIntegerTopic("pipelineIndexState").subscribe(0);
-    heartbeatSubscriber = cameraTable.getIntegerTopic("heartbeat").subscribe(-1);
-    cameraIntrinsicsSubscriber =
-        cameraTable.getDoubleArrayTopic("cameraIntrinsics").subscribe(null);
-    cameraDistortionSubscriber =
-        cameraTable.getDoubleArrayTopic("cameraDistortion").subscribe(null);
+    /**
+     * Constructs a PhotonCamera from a root table.
+     *
+     * @param instance The NetworkTableInstance to pull data from. This can be a custom instance in
+     *     simulation, but should *usually* be the default NTInstance from
+     *     NetworkTableInstance::getDefault
+     * @param cameraName The name of the camera, as seen in the UI.
+     */
+    public PhotonCamera(NetworkTableInstance instance, String cameraName) {
+        name = cameraName;
+        disconnectAlert =
+                new Alert(
+                        PHOTON_ALERT_GROUP, "PhotonCamera '" + name + "' is disconnected.", AlertType.kWarning);
+        timesyncAlert = new Alert(PHOTON_ALERT_GROUP, "", AlertType.kWarning);
+        rootPhotonTable = instance.getTable(kTableName);
+        this.cameraTable = rootPhotonTable.getSubTable(cameraName);
+        path = cameraTable.getPath();
+        var rawBytesEntry =
+                cameraTable
+                        .getRawTopic("rawBytes")
+                        .subscribe(
+                                PhotonPipelineResult.photonStruct.getTypeString(),
+                                new byte[0],
+                                PubSubOption.periodic(0.01),
+                                PubSubOption.sendAll(true),
+                                PubSubOption.pollStorage(20));
+        resultSubscriber = new PacketSubscriber<>(rawBytesEntry, PhotonPipelineResult.photonStruct);
+        driverModePublisher = cameraTable.getBooleanTopic("driverModeRequest").publish();
+        driverModeSubscriber = cameraTable.getBooleanTopic("driverMode").subscribe(false);
+        fpsLimitPublisher = cameraTable.getIntegerTopic("fpsLimitRequest").publish();
+        fpsLimitSubscriber = cameraTable.getIntegerTopic("fpsLimit").subscribe(-1);
+        inputSaveImgEntry = cameraTable.getIntegerTopic("inputSaveImgCmd").getEntry(0);
+        outputSaveImgEntry = cameraTable.getIntegerTopic("outputSaveImgCmd").getEntry(0);
+        pipelineIndexRequest = cameraTable.getIntegerTopic("pipelineIndexRequest").publish();
+        pipelineIndexState = cameraTable.getIntegerTopic("pipelineIndexState").subscribe(0);
+        heartbeatSubscriber = cameraTable.getIntegerTopic("heartbeat").subscribe(-1);
+        cameraIntrinsicsSubscriber =
+                cameraTable.getDoubleArrayTopic("cameraIntrinsics").subscribe(null);
+        cameraDistortionSubscriber =
+                cameraTable.getDoubleArrayTopic("cameraDistortion").subscribe(null);
 
-    ledModeRequest = rootPhotonTable.getIntegerTopic("ledModeRequest").publish();
-    ledModeState = rootPhotonTable.getIntegerTopic("ledModeState").subscribe(-1);
-    versionEntry = rootPhotonTable.getStringTopic("version").subscribe("");
+        ledModeRequest = rootPhotonTable.getIntegerTopic("ledModeRequest").publish();
+        ledModeState = rootPhotonTable.getIntegerTopic("ledModeState").subscribe(-1);
+        versionEntry = rootPhotonTable.getStringTopic("version").subscribe("");
 
-    // Existing is enough to make this multisubscriber do its thing
-    topicNameSubscriber =
-        new MultiSubscriber(
-            instance, new String[] {"/photonvision/"}, PubSubOption.topicsOnly(true));
+        // Existing is enough to make this multisubscriber do its thing
+        topicNameSubscriber =
+                new MultiSubscriber(
+                        instance, new String[] {"/photonvision/"}, PubSubOption.topicsOnly(true));
 
-    HAL.report(tResourceType.kResourceType_PhotonCamera, InstanceCount);
-    InstanceCount++;
+        HAL.report(tResourceType.kResourceType_PhotonCamera, InstanceCount);
+        InstanceCount++;
 
-    // HACK - start a TimeSyncServer, if we haven't yet.
-    TimeSyncSingleton.load();
+        // HACK - start a TimeSyncServer, if we haven't yet.
+        TimeSyncSingleton.load();
 
-    // HACK - check if things are compatible
-    verifyDependencies();
-  }
+        // HACK - check if things are compatible
+        verifyDependencies();
+    }
 
-  static void verifyDependencies() {
-    // spotless:off
+    static void verifyDependencies() {
+        // spotless:off
         if (!Core.VERSION.equals(PhotonVersion.opencvTargetVersion)) {
             String bfw = """
 
@@ -229,329 +229,329 @@ public class PhotonCamera implements AutoCloseable {
                     """;
             // spotless:on
 
-      DriverStation.reportWarning(bfw, false);
-      DriverStation.reportError(bfw, false);
-      throw new UnsupportedOperationException(bfw);
-    }
-  }
-
-  /**
-   * Constructs a PhotonCamera from the name of the camera.
-   *
-   * @param cameraName The nickname of the camera (found in the PhotonVision UI).
-   */
-  public PhotonCamera(String cameraName) {
-    this(NetworkTableInstance.getDefault(), cameraName);
-  }
-
-  /**
-   * The list of pipeline results sent by PhotonVision since the last call to getAllUnreadResults().
-   * Calling this function clears the internal FIFO queue, and multiple calls to
-   * getAllUnreadResults() will return different (potentially empty) result arrays. Be careful to
-   * call this exactly ONCE per loop of your robot code! FIFO depth is limited to 20 changes, so
-   * make sure to call this frequently enough to avoid old results being discarded, too!
-   *
-   * @return The list of pipeline results
-   */
-  public List<PhotonPipelineResult> getAllUnreadResults() {
-    verifyVersion();
-    updateDisconnectAlert();
-
-    // Grab the latest results. We don't care about the timestamps from NT - the metadata header has
-    // this, latency compensated by the Time Sync Client
-    var changes = resultSubscriber.getAllChanges();
-    List<PhotonPipelineResult> ret = new ArrayList<>(changes.size());
-    for (var c : changes) {
-      var result = c.value;
-      checkTimeSyncOrWarn(result);
-      ret.add(result);
+            DriverStation.reportWarning(bfw, false);
+            DriverStation.reportError(bfw, false);
+            throw new UnsupportedOperationException(bfw);
+        }
     }
 
-    return ret;
-  }
-
-  /**
-   * Returns the latest pipeline result. This is simply the most recent result Received via NT.
-   * Calling this multiple times will always return the most recent result.
-   *
-   * <p>Replaced by {@link #getAllUnreadResults()} over getLatestResult, as this function can miss
-   * results, or provide duplicate ones!
-   *
-   * @return The latest pipeline result
-   */
-  @Deprecated(since = "2024", forRemoval = true)
-  public PhotonPipelineResult getLatestResult() {
-    verifyVersion();
-    updateDisconnectAlert();
-
-    // Grab the latest result. We don't care about the timestamp from NT - the metadata header has
-    // this, latency compensated by the Time Sync Client
-    var ret = resultSubscriber.get();
-
-    if (ret.timestamp == 0) return new PhotonPipelineResult();
-
-    var result = ret.value;
-
-    checkTimeSyncOrWarn(result);
-
-    return result;
-  }
-
-  private void updateDisconnectAlert() {
-    disconnectAlert.set(!isConnected());
-  }
-
-  private void checkTimeSyncOrWarn(PhotonPipelineResult result) {
-    if (result.metadata.timeSinceLastPong > 5L * 1000000L) {
-      String warningText =
-          "PhotonVision coprocessor at path "
-              + path
-              + " is not connected to the TimeSyncServer? It's been "
-              + String.format("%.2f", result.metadata.timeSinceLastPong / 1e6)
-              + "s since the coprocessor last heard a pong.";
-
-      timesyncAlert.setText(warningText);
-      timesyncAlert.set(true);
-
-      if (Timer.getFPGATimestamp() > (prevTimeSyncWarnTime + WARN_DEBOUNCE_SEC)) {
-        prevTimeSyncWarnTime = Timer.getFPGATimestamp();
-
-        DriverStation.reportWarning(
-            warningText
-                + "\n\nCheck /photonvision/.timesync/{COPROCESSOR_HOSTNAME} for more information.",
-            false);
-      }
-    } else {
-      // Got a valid packet, reset the last time
-      prevTimeSyncWarnTime = 0;
-      timesyncAlert.set(false);
-    }
-  }
-
-  /**
-   * Returns whether the camera is in driver mode.
-   *
-   * @return Whether the camera is in driver mode.
-   */
-  public boolean getDriverMode() {
-    return driverModeSubscriber.get();
-  }
-
-  /**
-   * Toggles driver mode.
-   *
-   * @param driverMode Whether to set driver mode.
-   */
-  public void setDriverMode(boolean driverMode) {
-    driverModePublisher.set(driverMode);
-  }
-
-  /**
-   * Gets the FPS limit set on the camera.
-   *
-   * @return The current FPS limit.
-   */
-  public int getFPSLimit() {
-    return (int) fpsLimitSubscriber.get();
-  }
-
-  /**
-   * Sets the FPS limit on the camera.
-   *
-   * @param fps The FPS limit to set. Set to -1 for unlimited FPS.
-   */
-  public void setFPSLimit(int fps) {
-    fpsLimitPublisher.set(fps);
-  }
-
-  /**
-   * Request the camera to save a new image file from the input camera stream with overlays. Images
-   * take up space in the filesystem of the PhotonCamera. Calling it frequently will fill up disk
-   * space and eventually cause the system to stop working. Clear out images in
-   * /opt/photonvision/photonvision_config/imgSaves frequently to prevent issues.
-   */
-  public void takeInputSnapshot() {
-    inputSaveImgEntry.set(inputSaveImgEntry.get() + 1);
-  }
-
-  /**
-   * Request the camera to save a new image file from the output stream with overlays. Images take
-   * up space in the filesystem of the PhotonCamera. Calling it frequently will fill up disk space
-   * and eventually cause the system to stop working. Clear out images in
-   * /opt/photonvision/photonvision_config/imgSaves frequently to prevent issues.
-   */
-  public void takeOutputSnapshot() {
-    outputSaveImgEntry.set(outputSaveImgEntry.get() + 1);
-  }
-
-  /**
-   * Returns the active pipeline index.
-   *
-   * @return The active pipeline index.
-   */
-  public int getPipelineIndex() {
-    return (int) pipelineIndexState.get(0);
-  }
-
-  /**
-   * Allows the user to select the active pipeline index.
-   *
-   * @param index The active pipeline index.
-   */
-  public void setPipelineIndex(int index) {
-    pipelineIndexRequest.set(index);
-  }
-
-  /**
-   * Returns the current LED mode.
-   *
-   * @return The current LED mode.
-   */
-  public VisionLEDMode getLEDMode() {
-    int value = (int) ledModeState.get(-1);
-    return switch (value) {
-      case 0 -> VisionLEDMode.kOff;
-      case 1 -> VisionLEDMode.kOn;
-      case 2 -> VisionLEDMode.kBlink;
-      default -> VisionLEDMode.kDefault;
-    };
-  }
-
-  /**
-   * Sets the LED mode.
-   *
-   * @param led The mode to set to.
-   */
-  public void setLED(VisionLEDMode led) {
-    ledModeRequest.set(led.value);
-  }
-
-  /**
-   * Returns the name of the camera. This will return the same value that was given to the
-   * constructor as cameraName.
-   *
-   * @return The name of the camera.
-   */
-  public String getName() {
-    return name;
-  }
-
-  /**
-   * Returns whether the camera is connected and actively returning new data. Connection status is
-   * debounced.
-   *
-   * @return True if the camera is actively sending frame data, false otherwise.
-   */
-  public boolean isConnected() {
-    var curHeartbeat = heartbeatSubscriber.get();
-    var now = Timer.getFPGATimestamp();
-
-    if (curHeartbeat < 0) {
-      // we have never heard from the camera
-      return false;
+    /**
+     * Constructs a PhotonCamera from the name of the camera.
+     *
+     * @param cameraName The nickname of the camera (found in the PhotonVision UI).
+     */
+    public PhotonCamera(String cameraName) {
+        this(NetworkTableInstance.getDefault(), cameraName);
     }
 
-    if (curHeartbeat != prevHeartbeatValue) {
-      // New heartbeat value from the coprocessor
-      prevHeartbeatChangeTime = now;
-      prevHeartbeatValue = curHeartbeat;
-    }
+    /**
+     * The list of pipeline results sent by PhotonVision since the last call to getAllUnreadResults().
+     * Calling this function clears the internal FIFO queue, and multiple calls to
+     * getAllUnreadResults() will return different (potentially empty) result arrays. Be careful to
+     * call this exactly ONCE per loop of your robot code! FIFO depth is limited to 20 changes, so
+     * make sure to call this frequently enough to avoid old results being discarded, too!
+     *
+     * @return The list of pipeline results
+     */
+    public List<PhotonPipelineResult> getAllUnreadResults() {
+        verifyVersion();
+        updateDisconnectAlert();
 
-    return (now - prevHeartbeatChangeTime) < HEARTBEAT_DEBOUNCE_SEC;
-  }
-
-  public Optional<Matrix<N3, N3>> getCameraMatrix() {
-    var cameraMatrix = cameraIntrinsicsSubscriber.get();
-    if (cameraMatrix != null && cameraMatrix.length == 9) {
-      return Optional.of(MatBuilder.fill(Nat.N3(), Nat.N3(), cameraMatrix));
-    } else return Optional.empty();
-  }
-
-  /**
-   * Returns the camera calibration's distortion coefficients, in OPENCV8 form. Higher-order terms
-   * are set to 0
-   *
-   * @return The distortion coefficients in a 8x1 matrix, if they are published by the camera. Empty
-   *     otherwise.
-   */
-  public Optional<Matrix<N8, N1>> getDistCoeffs() {
-    var distCoeffs = cameraDistortionSubscriber.get();
-    if (distCoeffs != null && distCoeffs.length <= 8) {
-      // Copy into array of length 8, and explicitly null higher order terms out
-      double[] data = new double[8];
-      Arrays.fill(data, 0);
-      System.arraycopy(distCoeffs, 0, data, 0, distCoeffs.length);
-
-      return Optional.of(MatBuilder.fill(Nat.N8(), Nat.N1(), data));
-    } else return Optional.empty();
-  }
-
-  /**
-   * Gets the NetworkTable representing this camera's subtable. You probably don't ever need to call
-   * this.
-   */
-  public final NetworkTable getCameraTable() {
-    return cameraTable;
-  }
-
-  void verifyVersion() {
-    if (!VERSION_CHECK_ENABLED) return;
-
-    if ((Timer.getFPGATimestamp() - lastVersionCheckTime) < VERSION_CHECK_INTERVAL) return;
-    lastVersionCheckTime = Timer.getFPGATimestamp();
-
-    // Heartbeat entry is assumed to always be present. If it's not present, we
-    // assume that a camera with that name was never connected in the first place.
-    if (!heartbeatSubscriber.exists()) {
-      var cameraNames = getTablesThatLookLikePhotonCameras();
-      if (cameraNames.isEmpty()) {
-        DriverStation.reportError(
-            "Could not find **any** PhotonVision coprocessors on NetworkTables. Double check that PhotonVision is running, and that your camera is connected!",
-            false);
-      } else {
-        DriverStation.reportError(
-            "PhotonVision coprocessor at path "
-                + path
-                + " not found on NetworkTables. Double check that your camera names match!",
-            true);
-
-        var cameraNameStr = new StringBuilder();
-        for (var c : cameraNames) {
-          cameraNameStr.append(" ==> ");
-          cameraNameStr.append(c);
-          cameraNameStr.append("\n");
+        // Grab the latest results. We don't care about the timestamps from NT - the metadata header has
+        // this, latency compensated by the Time Sync Client
+        var changes = resultSubscriber.getAllChanges();
+        List<PhotonPipelineResult> ret = new ArrayList<>(changes.size());
+        for (var c : changes) {
+            var result = c.value;
+            checkTimeSyncOrWarn(result);
+            ret.add(result);
         }
 
-        DriverStation.reportError(
-            "Found the following PhotonVision cameras on NetworkTables:\n"
-                + cameraNameStr.toString(),
-            false);
-      }
-    }
-    // Check for connection status. Warn if disconnected.
-    else if (!isConnected()) {
-      DriverStation.reportWarning(
-          "PhotonVision coprocessor at path " + path + " is not sending new data.", false);
+        return ret;
     }
 
-    String versionString = versionEntry.get("");
+    /**
+     * Returns the latest pipeline result. This is simply the most recent result Received via NT.
+     * Calling this multiple times will always return the most recent result.
+     *
+     * <p>Replaced by {@link #getAllUnreadResults()} over getLatestResult, as this function can miss
+     * results, or provide duplicate ones!
+     *
+     * @return The latest pipeline result
+     */
+    @Deprecated(since = "2024", forRemoval = true)
+    public PhotonPipelineResult getLatestResult() {
+        verifyVersion();
+        updateDisconnectAlert();
 
-    // Check mdef UUID
-    String local_uuid = PhotonPipelineResult.photonStruct.getInterfaceUUID();
-    String remote_uuid = resultSubscriber.getInterfaceUUID();
+        // Grab the latest result. We don't care about the timestamp from NT - the metadata header has
+        // this, latency compensated by the Time Sync Client
+        var ret = resultSubscriber.get();
 
-    if (remote_uuid == null || remote_uuid.isEmpty()) {
-      // not connected yet?
-      DriverStation.reportWarning(
-          "PhotonVision coprocessor at path "
-              + path
-              + " has not reported a message interface UUID - is your coprocessor's camera started?",
-          false);
-    } else if (!local_uuid.equals(remote_uuid)) {
-      // Error on a verified version mismatch
-      // But stay silent otherwise
+        if (ret.timestamp == 0) return new PhotonPipelineResult();
 
-      // spotless:off
+        var result = ret.value;
+
+        checkTimeSyncOrWarn(result);
+
+        return result;
+    }
+
+    private void updateDisconnectAlert() {
+        disconnectAlert.set(!isConnected());
+    }
+
+    private void checkTimeSyncOrWarn(PhotonPipelineResult result) {
+        if (result.metadata.timeSinceLastPong > 5L * 1000000L) {
+            String warningText =
+                    "PhotonVision coprocessor at path "
+                            + path
+                            + " is not connected to the TimeSyncServer? It's been "
+                            + String.format("%.2f", result.metadata.timeSinceLastPong / 1e6)
+                            + "s since the coprocessor last heard a pong.";
+
+            timesyncAlert.setText(warningText);
+            timesyncAlert.set(true);
+
+            if (Timer.getFPGATimestamp() > (prevTimeSyncWarnTime + WARN_DEBOUNCE_SEC)) {
+                prevTimeSyncWarnTime = Timer.getFPGATimestamp();
+
+                DriverStation.reportWarning(
+                        warningText
+                                + "\n\nCheck /photonvision/.timesync/{COPROCESSOR_HOSTNAME} for more information.",
+                        false);
+            }
+        } else {
+            // Got a valid packet, reset the last time
+            prevTimeSyncWarnTime = 0;
+            timesyncAlert.set(false);
+        }
+    }
+
+    /**
+     * Returns whether the camera is in driver mode.
+     *
+     * @return Whether the camera is in driver mode.
+     */
+    public boolean getDriverMode() {
+        return driverModeSubscriber.get();
+    }
+
+    /**
+     * Toggles driver mode.
+     *
+     * @param driverMode Whether to set driver mode.
+     */
+    public void setDriverMode(boolean driverMode) {
+        driverModePublisher.set(driverMode);
+    }
+
+    /**
+     * Gets the FPS limit set on the camera.
+     *
+     * @return The current FPS limit.
+     */
+    public int getFPSLimit() {
+        return (int) fpsLimitSubscriber.get();
+    }
+
+    /**
+     * Sets the FPS limit on the camera.
+     *
+     * @param fps The FPS limit to set. Set to -1 for unlimited FPS.
+     */
+    public void setFPSLimit(int fps) {
+        fpsLimitPublisher.set(fps);
+    }
+
+    /**
+     * Request the camera to save a new image file from the input camera stream with overlays. Images
+     * take up space in the filesystem of the PhotonCamera. Calling it frequently will fill up disk
+     * space and eventually cause the system to stop working. Clear out images in
+     * /opt/photonvision/photonvision_config/imgSaves frequently to prevent issues.
+     */
+    public void takeInputSnapshot() {
+        inputSaveImgEntry.set(inputSaveImgEntry.get() + 1);
+    }
+
+    /**
+     * Request the camera to save a new image file from the output stream with overlays. Images take
+     * up space in the filesystem of the PhotonCamera. Calling it frequently will fill up disk space
+     * and eventually cause the system to stop working. Clear out images in
+     * /opt/photonvision/photonvision_config/imgSaves frequently to prevent issues.
+     */
+    public void takeOutputSnapshot() {
+        outputSaveImgEntry.set(outputSaveImgEntry.get() + 1);
+    }
+
+    /**
+     * Returns the active pipeline index.
+     *
+     * @return The active pipeline index.
+     */
+    public int getPipelineIndex() {
+        return (int) pipelineIndexState.get(0);
+    }
+
+    /**
+     * Allows the user to select the active pipeline index.
+     *
+     * @param index The active pipeline index.
+     */
+    public void setPipelineIndex(int index) {
+        pipelineIndexRequest.set(index);
+    }
+
+    /**
+     * Returns the current LED mode.
+     *
+     * @return The current LED mode.
+     */
+    public VisionLEDMode getLEDMode() {
+        int value = (int) ledModeState.get(-1);
+        return switch (value) {
+            case 0 -> VisionLEDMode.kOff;
+            case 1 -> VisionLEDMode.kOn;
+            case 2 -> VisionLEDMode.kBlink;
+            default -> VisionLEDMode.kDefault;
+        };
+    }
+
+    /**
+     * Sets the LED mode.
+     *
+     * @param led The mode to set to.
+     */
+    public void setLED(VisionLEDMode led) {
+        ledModeRequest.set(led.value);
+    }
+
+    /**
+     * Returns the name of the camera. This will return the same value that was given to the
+     * constructor as cameraName.
+     *
+     * @return The name of the camera.
+     */
+    public String getName() {
+        return name;
+    }
+
+    /**
+     * Returns whether the camera is connected and actively returning new data. Connection status is
+     * debounced.
+     *
+     * @return True if the camera is actively sending frame data, false otherwise.
+     */
+    public boolean isConnected() {
+        var curHeartbeat = heartbeatSubscriber.get();
+        var now = Timer.getFPGATimestamp();
+
+        if (curHeartbeat < 0) {
+            // we have never heard from the camera
+            return false;
+        }
+
+        if (curHeartbeat != prevHeartbeatValue) {
+            // New heartbeat value from the coprocessor
+            prevHeartbeatChangeTime = now;
+            prevHeartbeatValue = curHeartbeat;
+        }
+
+        return (now - prevHeartbeatChangeTime) < HEARTBEAT_DEBOUNCE_SEC;
+    }
+
+    public Optional<Matrix<N3, N3>> getCameraMatrix() {
+        var cameraMatrix = cameraIntrinsicsSubscriber.get();
+        if (cameraMatrix != null && cameraMatrix.length == 9) {
+            return Optional.of(MatBuilder.fill(Nat.N3(), Nat.N3(), cameraMatrix));
+        } else return Optional.empty();
+    }
+
+    /**
+     * Returns the camera calibration's distortion coefficients, in OPENCV8 form. Higher-order terms
+     * are set to 0
+     *
+     * @return The distortion coefficients in a 8x1 matrix, if they are published by the camera. Empty
+     *     otherwise.
+     */
+    public Optional<Matrix<N8, N1>> getDistCoeffs() {
+        var distCoeffs = cameraDistortionSubscriber.get();
+        if (distCoeffs != null && distCoeffs.length <= 8) {
+            // Copy into array of length 8, and explicitly null higher order terms out
+            double[] data = new double[8];
+            Arrays.fill(data, 0);
+            System.arraycopy(distCoeffs, 0, data, 0, distCoeffs.length);
+
+            return Optional.of(MatBuilder.fill(Nat.N8(), Nat.N1(), data));
+        } else return Optional.empty();
+    }
+
+    /**
+     * Gets the NetworkTable representing this camera's subtable. You probably don't ever need to call
+     * this.
+     */
+    public final NetworkTable getCameraTable() {
+        return cameraTable;
+    }
+
+    void verifyVersion() {
+        if (!VERSION_CHECK_ENABLED) return;
+
+        if ((Timer.getFPGATimestamp() - lastVersionCheckTime) < VERSION_CHECK_INTERVAL) return;
+        lastVersionCheckTime = Timer.getFPGATimestamp();
+
+        // Heartbeat entry is assumed to always be present. If it's not present, we
+        // assume that a camera with that name was never connected in the first place.
+        if (!heartbeatSubscriber.exists()) {
+            var cameraNames = getTablesThatLookLikePhotonCameras();
+            if (cameraNames.isEmpty()) {
+                DriverStation.reportError(
+                        "Could not find **any** PhotonVision coprocessors on NetworkTables. Double check that PhotonVision is running, and that your camera is connected!",
+                        false);
+            } else {
+                DriverStation.reportError(
+                        "PhotonVision coprocessor at path "
+                                + path
+                                + " not found on NetworkTables. Double check that your camera names match!",
+                        true);
+
+                var cameraNameStr = new StringBuilder();
+                for (var c : cameraNames) {
+                    cameraNameStr.append(" ==> ");
+                    cameraNameStr.append(c);
+                    cameraNameStr.append("\n");
+                }
+
+                DriverStation.reportError(
+                        "Found the following PhotonVision cameras on NetworkTables:\n"
+                                + cameraNameStr.toString(),
+                        false);
+            }
+        }
+        // Check for connection status. Warn if disconnected.
+        else if (!isConnected()) {
+            DriverStation.reportWarning(
+                    "PhotonVision coprocessor at path " + path + " is not sending new data.", false);
+        }
+
+        String versionString = versionEntry.get("");
+
+        // Check mdef UUID
+        String local_uuid = PhotonPipelineResult.photonStruct.getInterfaceUUID();
+        String remote_uuid = resultSubscriber.getInterfaceUUID();
+
+        if (remote_uuid == null || remote_uuid.isEmpty()) {
+            // not connected yet?
+            DriverStation.reportWarning(
+                    "PhotonVision coprocessor at path "
+                            + path
+                            + " has not reported a message interface UUID - is your coprocessor's camera started?",
+                    false);
+        } else if (!local_uuid.equals(remote_uuid)) {
+            // Error on a verified version mismatch
+            // But stay silent otherwise
+
+            // spotless:off
             String bfw = """
 
 
@@ -576,30 +576,30 @@ public class PhotonCamera implements AutoCloseable {
                     """;
             // spotless:on
 
-      DriverStation.reportWarning(bfw, false);
-      var versionMismatchMessage =
-          "Photon version "
-              + PhotonVersion.versionString
-              + " (message definition version "
-              + local_uuid
-              + ")"
-              + " does not match coprocessor version "
-              + versionString
-              + " (message definition version "
-              + remote_uuid
-              + ")"
-              + "!";
-      DriverStation.reportError(versionMismatchMessage, false);
-      throw new UnsupportedOperationException(versionMismatchMessage);
+            DriverStation.reportWarning(bfw, false);
+            var versionMismatchMessage =
+                    "Photon version "
+                            + PhotonVersion.versionString
+                            + " (message definition version "
+                            + local_uuid
+                            + ")"
+                            + " does not match coprocessor version "
+                            + versionString
+                            + " (message definition version "
+                            + remote_uuid
+                            + ")"
+                            + "!";
+            DriverStation.reportError(versionMismatchMessage, false);
+            throw new UnsupportedOperationException(versionMismatchMessage);
+        }
     }
-  }
 
-  private List<String> getTablesThatLookLikePhotonCameras() {
-    return rootPhotonTable.getSubTables().stream()
-        .filter(
-            it -> {
-              return rootPhotonTable.getSubTable(it).getEntry("rawBytes").exists();
-            })
-        .toList();
-  }
+    private List<String> getTablesThatLookLikePhotonCameras() {
+        return rootPhotonTable.getSubTables().stream()
+                .filter(
+                        it -> {
+                            return rootPhotonTable.getSubTable(it).getEntry("rawBytes").exists();
+                        })
+                .toList();
+    }
 }

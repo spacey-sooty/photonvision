@@ -29,40 +29,40 @@ import org.photonvision.vision.opencv.Releasable;
 import org.photonvision.vision.pipe.CVPipe;
 
 public class ObjectDetectionPipe
-    extends CVPipe<
-        CVMat, List<NeuralNetworkPipeResult>, ObjectDetectionPipe.ObjectDetectionPipeParams>
-    implements Releasable {
-  private ObjectDetector detector;
+        extends CVPipe<
+                CVMat, List<NeuralNetworkPipeResult>, ObjectDetectionPipe.ObjectDetectionPipeParams>
+        implements Releasable {
+    private ObjectDetector detector;
 
-  public ObjectDetectionPipe() {
-    Optional<Model> defaultModel = NeuralNetworkModelManager.getInstance().getDefaultModel();
-    detector = defaultModel.map(Model::load).orElse(NullModel.getInstance());
-  }
-
-  @Override
-  protected List<NeuralNetworkPipeResult> process(CVMat in) {
-    // Check if the model has changed
-    if (detector.getModel() != params.model()) {
-      detector.release();
-      detector = params.model().load();
+    public ObjectDetectionPipe() {
+        Optional<Model> defaultModel = NeuralNetworkModelManager.getInstance().getDefaultModel();
+        detector = defaultModel.map(Model::load).orElse(NullModel.getInstance());
     }
 
-    Mat frame = in.getMat();
-    if (frame.empty()) {
-      return List.of();
+    @Override
+    protected List<NeuralNetworkPipeResult> process(CVMat in) {
+        // Check if the model has changed
+        if (detector.getModel() != params.model()) {
+            detector.release();
+            detector = params.model().load();
+        }
+
+        Mat frame = in.getMat();
+        if (frame.empty()) {
+            return List.of();
+        }
+
+        return detector.detect(in.getMat(), params.nms(), params.confidence());
     }
 
-    return detector.detect(in.getMat(), params.nms(), params.confidence());
-  }
+    public static record ObjectDetectionPipeParams(double confidence, double nms, Model model) {}
 
-  public static record ObjectDetectionPipeParams(double confidence, double nms, Model model) {}
+    public List<String> getClassNames() {
+        return detector.getClasses();
+    }
 
-  public List<String> getClassNames() {
-    return detector.getClasses();
-  }
-
-  @Override
-  public void release() {
-    detector.release();
-  }
+    @Override
+    public void release() {
+        detector.release();
+    }
 }

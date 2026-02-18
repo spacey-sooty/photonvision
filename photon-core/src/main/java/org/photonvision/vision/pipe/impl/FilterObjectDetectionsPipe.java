@@ -24,41 +24,41 @@ import org.photonvision.vision.frame.FrameStaticProperties;
 import org.photonvision.vision.pipe.CVPipe;
 
 public class FilterObjectDetectionsPipe
-    extends CVPipe<
-        List<NeuralNetworkPipeResult>,
-        List<NeuralNetworkPipeResult>,
-        FilterObjectDetectionsPipe.FilterContoursParams> {
-  List<NeuralNetworkPipeResult> m_filteredContours = new ArrayList<>();
+        extends CVPipe<
+                List<NeuralNetworkPipeResult>,
+                List<NeuralNetworkPipeResult>,
+                FilterObjectDetectionsPipe.FilterContoursParams> {
+    List<NeuralNetworkPipeResult> m_filteredContours = new ArrayList<>();
 
-  @Override
-  protected List<NeuralNetworkPipeResult> process(List<NeuralNetworkPipeResult> in) {
-    m_filteredContours.clear();
-    for (var contour : in) {
-      filterContour(contour);
+    @Override
+    protected List<NeuralNetworkPipeResult> process(List<NeuralNetworkPipeResult> in) {
+        m_filteredContours.clear();
+        for (var contour : in) {
+            filterContour(contour);
+        }
+
+        return m_filteredContours;
     }
 
-    return m_filteredContours;
-  }
+    private void filterContour(NeuralNetworkPipeResult contour) {
+        var boc = contour.bbox();
 
-  private void filterContour(NeuralNetworkPipeResult contour) {
-    var boc = contour.bbox();
+        // Area filtering
+        double areaPercentage = boc.area() / params.frameStaticProperties().imageArea * 100.0;
+        double minAreaPercentage = params.area().getFirst();
+        double maxAreaPercentage = params.area().getSecond();
+        if (areaPercentage < minAreaPercentage || areaPercentage > maxAreaPercentage) return;
 
-    // Area filtering
-    double areaPercentage = boc.area() / params.frameStaticProperties().imageArea * 100.0;
-    double minAreaPercentage = params.area().getFirst();
-    double maxAreaPercentage = params.area().getSecond();
-    if (areaPercentage < minAreaPercentage || areaPercentage > maxAreaPercentage) return;
+        // Aspect ratio filtering; much simpler since always axis-aligned
+        double aspectRatio = boc.width / boc.height;
+        if (aspectRatio < params.ratio().getFirst() || aspectRatio > params.ratio().getSecond()) return;
 
-    // Aspect ratio filtering; much simpler since always axis-aligned
-    double aspectRatio = boc.width / boc.height;
-    if (aspectRatio < params.ratio().getFirst() || aspectRatio > params.ratio().getSecond()) return;
+        m_filteredContours.add(contour);
+    }
 
-    m_filteredContours.add(contour);
-  }
-
-  public static record FilterContoursParams(
-      DoubleCouple area,
-      DoubleCouple ratio,
-      FrameStaticProperties frameStaticProperties,
-      boolean isLandscape) {}
+    public static record FilterContoursParams(
+            DoubleCouple area,
+            DoubleCouple ratio,
+            FrameStaticProperties frameStaticProperties,
+            boolean isLandscape) {}
 }

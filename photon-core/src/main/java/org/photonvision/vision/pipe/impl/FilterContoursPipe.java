@@ -27,83 +27,83 @@ import org.photonvision.vision.pipe.CVPipe;
 import org.photonvision.vision.target.TargetCalculations;
 
 public class FilterContoursPipe
-    extends CVPipe<List<Contour>, List<Contour>, FilterContoursPipe.FilterContoursParams> {
-  List<Contour> m_filteredContours = new ArrayList<>();
+        extends CVPipe<List<Contour>, List<Contour>, FilterContoursPipe.FilterContoursParams> {
+    List<Contour> m_filteredContours = new ArrayList<>();
 
-  @Override
-  protected List<Contour> process(List<Contour> in) {
-    m_filteredContours.clear();
-    for (Contour contour : in) {
-      filterContour(contour);
+    @Override
+    protected List<Contour> process(List<Contour> in) {
+        m_filteredContours.clear();
+        for (Contour contour : in) {
+            filterContour(contour);
+        }
+
+        // we need the whole list for outlier rejection
+        rejectOutliers(m_filteredContours, params.xTol(), params.yTol());
+
+        return m_filteredContours;
     }
 
-    // we need the whole list for outlier rejection
-    rejectOutliers(m_filteredContours, params.xTol(), params.yTol());
+    private void rejectOutliers(List<Contour> list, double xTol, double yTol) {
+        if (list.size() < 2) return; // Must have at least 2 points to reject outliers
 
-    return m_filteredContours;
-  }
+        double meanX = list.stream().mapToDouble(it -> it.getCenterPoint().x).sum() / list.size();
 
-  private void rejectOutliers(List<Contour> list, double xTol, double yTol) {
-    if (list.size() < 2) return; // Must have at least 2 points to reject outliers
+        double stdDevX =
+                list.stream().mapToDouble(it -> Math.pow(it.getCenterPoint().x - meanX, 2.0)).sum();
+        stdDevX /= (list.size() - 1);
+        stdDevX = Math.sqrt(stdDevX);
 
-    double meanX = list.stream().mapToDouble(it -> it.getCenterPoint().x).sum() / list.size();
+        double meanY = list.stream().mapToDouble(it -> it.getCenterPoint().y).sum() / list.size();
 
-    double stdDevX =
-        list.stream().mapToDouble(it -> Math.pow(it.getCenterPoint().x - meanX, 2.0)).sum();
-    stdDevX /= (list.size() - 1);
-    stdDevX = Math.sqrt(stdDevX);
+        double stdDevY =
+                list.stream().mapToDouble(it -> Math.pow(it.getCenterPoint().y - meanY, 2.0)).sum();
+        stdDevY /= (list.size() - 1);
+        stdDevY = Math.sqrt(stdDevY);
 
-    double meanY = list.stream().mapToDouble(it -> it.getCenterPoint().y).sum() / list.size();
+        for (var it = list.iterator(); it.hasNext(); ) {
+            // Reject points more than N standard devs above/below median
+            // That is, |point - median| > std dev * tol
+            Contour c = it.next();
+            double x = c.getCenterPoint().x;
+            double y = c.getCenterPoint().y;
 
-    double stdDevY =
-        list.stream().mapToDouble(it -> Math.pow(it.getCenterPoint().y - meanY, 2.0)).sum();
-    stdDevY /= (list.size() - 1);
-    stdDevY = Math.sqrt(stdDevY);
-
-    for (var it = list.iterator(); it.hasNext(); ) {
-      // Reject points more than N standard devs above/below median
-      // That is, |point - median| > std dev * tol
-      Contour c = it.next();
-      double x = c.getCenterPoint().x;
-      double y = c.getCenterPoint().y;
-
-      if (Math.abs(x - meanX) > stdDevX * xTol || Math.abs(y - meanY) > stdDevY * yTol) {
-        it.remove();
-      }
-      // Otherwise we're good! Keep it in
+            if (Math.abs(x - meanX) > stdDevX * xTol || Math.abs(y - meanY) > stdDevY * yTol) {
+                it.remove();
+            }
+            // Otherwise we're good! Keep it in
+        }
     }
-  }
 
-  private void filterContour(Contour contour) {
-    RotatedRect minAreaRect = contour.getMinAreaRect();
+    private void filterContour(Contour contour) {
+        RotatedRect minAreaRect = contour.getMinAreaRect();
 
-    // Area Filtering.
-    double areaPercentage =
-        minAreaRect.size.area() / params.frameStaticProperties().imageArea * 100.0;
-    double minAreaPercentage = params.area().getFirst();
-    double maxAreaPercentage = params.area().getSecond();
-    if (areaPercentage < minAreaPercentage || areaPercentage > maxAreaPercentage) return;
+        // Area Filtering.
+        double areaPercentage =
+                minAreaRect.size.area() / params.frameStaticProperties().imageArea * 100.0;
+        double minAreaPercentage = params.area().getFirst();
+        double maxAreaPercentage = params.area().getSecond();
+        if (areaPercentage < minAreaPercentage || areaPercentage > maxAreaPercentage) return;
 
-    // Fullness Filtering.
-    double contourArea = contour.getArea();
-    double minFullness = params.fullness().getFirst() * minAreaRect.size.area() / 100.0;
-    double maxFullness = params.fullness().getSecond() * minAreaRect.size.area() / 100.0;
-    if (contourArea <= minFullness || contourArea >= maxFullness) return;
+        // Fullness Filtering.
+        double contourArea = contour.getArea();
+        double minFullness = params.fullness().getFirst() * minAreaRect.size.area() / 100.0;
+        double maxFullness = params.fullness().getSecond() * minAreaRect.size.area() / 100.0;
+        if (contourArea <= minFullness || contourArea >= maxFullness) return;
 
-    // Aspect Ratio Filtering.
-    double aspectRatio =
-        TargetCalculations.getAspectRatio(contour.getMinAreaRect(), params.isLandscape());
-    if (aspectRatio < params.ratio().getFirst() || aspectRatio > params.ratio().getSecond()) return;
+        // Aspect Ratio Filtering.
+        double aspectRatio =
+                TargetCalculations.getAspectRatio(contour.getMinAreaRect(), params.isLandscape());
+        if (aspectRatio < params.ratio().getFirst() || aspectRatio > params.ratio().getSecond()) return;
 
-    m_filteredContours.add(contour);
-  }
+        m_filteredContours.add(contour);
+    }
 
-  public static record FilterContoursParams(
-      DoubleCouple area,
-      DoubleCouple ratio,
-      DoubleCouple fullness,
-      FrameStaticProperties frameStaticProperties,
-      double xTol, // IQR tolerance for x
-      double yTol, // IQR tolerance for y
-      boolean isLandscape) {}
+    public static record FilterContoursParams(
+            DoubleCouple area,
+            DoubleCouple ratio,
+            DoubleCouple fullness,
+            FrameStaticProperties frameStaticProperties,
+            double xTol, // IQR tolerance for x
+            double yTol, // IQR tolerance for y
+            boolean isLandscape) {}
 }

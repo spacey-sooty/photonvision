@@ -30,121 +30,121 @@ import org.photonvision.common.util.numbers.DoubleCouple;
 import org.photonvision.common.util.numbers.IntegerCouple;
 
 public class VisionModuleChangeSubscriberTest {
-  enum TestEnum {
-    VALUE1,
-    VALUE2
-  }
-
-  static class TestClass {
-    public TestEnum enumField;
-    public DoubleCouple doubleCoupleField;
-    public IntegerCouple integerCoupleField;
-    public double doubleField;
-    public int intField;
-    public boolean booleanField;
-    public String stringField;
-
-    public TestClass() {
-      enumField = TestEnum.VALUE1;
-      doubleCoupleField = new DoubleCouple(0, 0);
-      integerCoupleField = new IntegerCouple(0, 0);
-      doubleField = 0;
-      intField = 0;
-      booleanField = false;
-      stringField = "";
+    enum TestEnum {
+        VALUE1,
+        VALUE2
     }
-  }
 
-  @Test
-  // Either set with the enum Variant or the ordinal value
-  void testSetEnumField() throws Exception {
-    TestClass obj = new TestClass();
-    assertEquals(obj.enumField, TestEnum.VALUE1);
+    static class TestClass {
+        public TestEnum enumField;
+        public DoubleCouple doubleCoupleField;
+        public IntegerCouple integerCoupleField;
+        public double doubleField;
+        public int intField;
+        public boolean booleanField;
+        public String stringField;
 
-    setProperty(obj, "enumField", TestEnum.VALUE2.ordinal());
-    assertEquals(TestEnum.VALUE2, obj.enumField);
-  }
+        public TestClass() {
+            enumField = TestEnum.VALUE1;
+            doubleCoupleField = new DoubleCouple(0, 0);
+            integerCoupleField = new IntegerCouple(0, 0);
+            doubleField = 0;
+            intField = 0;
+            booleanField = false;
+            stringField = "";
+        }
+    }
 
-  @Test
-  void testSetDoubleCoupleField() throws Exception {
-    TestClass obj = new TestClass();
-    assertEquals(new DoubleCouple(0, 0), obj.doubleCoupleField);
+    @Test
+    // Either set with the enum Variant or the ordinal value
+    void testSetEnumField() throws Exception {
+        TestClass obj = new TestClass();
+        assertEquals(obj.enumField, TestEnum.VALUE1);
 
-    ArrayList<Number> values = new ArrayList<>();
-    values.add(1.1);
-    values.add(2.2);
+        setProperty(obj, "enumField", TestEnum.VALUE2.ordinal());
+        assertEquals(TestEnum.VALUE2, obj.enumField);
+    }
 
-    setProperty(obj, "doubleCoupleField", values);
+    @Test
+    void testSetDoubleCoupleField() throws Exception {
+        TestClass obj = new TestClass();
+        assertEquals(new DoubleCouple(0, 0), obj.doubleCoupleField);
 
-    assertEquals(1.1, obj.doubleCoupleField.getFirst());
-    assertEquals(2.2, obj.doubleCoupleField.getSecond());
-  }
+        ArrayList<Number> values = new ArrayList<>();
+        values.add(1.1);
+        values.add(2.2);
 
-  @Test
-  void testSetIntegerCoupleField() throws Exception {
-    TestClass obj = new TestClass();
-    assertEquals(new IntegerCouple(0, 0), obj.integerCoupleField);
+        setProperty(obj, "doubleCoupleField", values);
 
-    ArrayList<Number> values = new ArrayList<>();
-    values.add(1);
-    values.add(2);
+        assertEquals(1.1, obj.doubleCoupleField.getFirst());
+        assertEquals(2.2, obj.doubleCoupleField.getSecond());
+    }
 
-    setProperty(obj, "integerCoupleField", values);
+    @Test
+    void testSetIntegerCoupleField() throws Exception {
+        TestClass obj = new TestClass();
+        assertEquals(new IntegerCouple(0, 0), obj.integerCoupleField);
 
-    assertEquals(1, obj.integerCoupleField.getFirst());
-    assertEquals(2, obj.integerCoupleField.getSecond());
-  }
+        ArrayList<Number> values = new ArrayList<>();
+        values.add(1);
+        values.add(2);
 
-  @Test
-  void testSetDoubleField() throws Exception {
-    TestClass obj = new TestClass();
-    assertEquals(0, obj.doubleField);
+        setProperty(obj, "integerCoupleField", values);
 
-    setProperty(obj, "doubleField", 3.14);
-    assertEquals(3.14, obj.doubleField);
-  }
+        assertEquals(1, obj.integerCoupleField.getFirst());
+        assertEquals(2, obj.integerCoupleField.getSecond());
+    }
 
-  @Test
-  void testSetIntField() throws Exception {
-    TestClass obj = new TestClass();
-    assertEquals(0, obj.intField);
+    @Test
+    void testSetDoubleField() throws Exception {
+        TestClass obj = new TestClass();
+        assertEquals(0, obj.doubleField);
 
-    setProperty(obj, "intField", 42);
-    assertEquals(42, obj.intField);
-  }
+        setProperty(obj, "doubleField", 3.14);
+        assertEquals(3.14, obj.doubleField);
+    }
 
-  @Test
-  void testSetBooleanField() throws Exception {
-    TestClass obj = new TestClass();
-    assertEquals(false, obj.booleanField);
+    @Test
+    void testSetIntField() throws Exception {
+        TestClass obj = new TestClass();
+        assertEquals(0, obj.intField);
 
-    setProperty(obj, "booleanField", 1);
-    assertTrue(obj.booleanField);
+        setProperty(obj, "intField", 42);
+        assertEquals(42, obj.intField);
+    }
 
-    setProperty(obj, "booleanField", 0);
-    assertFalse(obj.booleanField);
-  }
+    @Test
+    void testSetBooleanField() throws Exception {
+        TestClass obj = new TestClass();
+        assertEquals(false, obj.booleanField);
 
-  @Test
-  void testSetStringField() throws Exception {
-    TestClass obj = new TestClass();
-    assertEquals("", obj.stringField);
+        setProperty(obj, "booleanField", 1);
+        assertTrue(obj.booleanField);
 
-    setProperty(obj, "stringField", "test");
-    assertEquals("test", obj.stringField);
-  }
+        setProperty(obj, "booleanField", 0);
+        assertFalse(obj.booleanField);
+    }
 
-  @Test
-  void testSetNonExistentField() {
-    TestClass obj = new TestClass();
-    Executable executable = () -> setProperty(obj, "nonExistentField", 1);
-    assertThrows(NoSuchFieldException.class, executable);
-  }
+    @Test
+    void testSetStringField() throws Exception {
+        TestClass obj = new TestClass();
+        assertEquals("", obj.stringField);
 
-  @Test
-  void testSetFieldWithIncompatibleType() {
-    TestClass obj = new TestClass();
-    Executable executable = () -> setProperty(obj, "doubleField", "string");
-    assertThrows(Exception.class, executable);
-  }
+        setProperty(obj, "stringField", "test");
+        assertEquals("test", obj.stringField);
+    }
+
+    @Test
+    void testSetNonExistentField() {
+        TestClass obj = new TestClass();
+        Executable executable = () -> setProperty(obj, "nonExistentField", 1);
+        assertThrows(NoSuchFieldException.class, executable);
+    }
+
+    @Test
+    void testSetFieldWithIncompatibleType() {
+        TestClass obj = new TestClass();
+        Executable executable = () -> setProperty(obj, "doubleField", "string");
+        assertThrows(Exception.class, executable);
+    }
 }

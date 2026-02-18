@@ -24,65 +24,65 @@ import org.photonvision.common.configuration.NeuralNetworkModelManager.Version;
 import org.photonvision.common.configuration.NeuralNetworkModelsSettings.ModelProperties;
 
 public class RknnModel implements Model {
-  public final File modelFile;
-  public final ModelProperties properties;
+    public final File modelFile;
+    public final ModelProperties properties;
 
-  /**
-   * rknn model constructor.
-   *
-   * @param properties The properties of the model.
-   * @throws IllegalArgumentException
-   */
-  public RknnModel(ModelProperties properties) throws IllegalArgumentException {
-    modelFile = new File(properties.modelPath().toString());
-    if (!modelFile.exists()) {
-      throw new IllegalArgumentException("Model file does not exist: " + modelFile);
+    /**
+     * rknn model constructor.
+     *
+     * @param properties The properties of the model.
+     * @throws IllegalArgumentException
+     */
+    public RknnModel(ModelProperties properties) throws IllegalArgumentException {
+        modelFile = new File(properties.modelPath().toString());
+        if (!modelFile.exists()) {
+            throw new IllegalArgumentException("Model file does not exist: " + modelFile);
+        }
+
+        if (properties.labels() == null || properties.labels().isEmpty()) {
+            throw new IllegalArgumentException("Labels must be provided");
+        }
+
+        if (properties.resolutionWidth() <= 0 || properties.resolutionHeight() <= 0) {
+            throw new IllegalArgumentException("Resolution must be greater than 0");
+        }
+
+        if (properties.family() != Family.RKNN) {
+            throw new IllegalArgumentException("Model family must be RKNN");
+        }
+
+        if (properties.version() != Version.YOLOV5
+                && properties.version() != Version.YOLOV8
+                && properties.version() != Version.YOLOV11) {
+            throw new IllegalArgumentException("Model version must be YOLOV5, YOLOV8, or YOLOV11");
+        }
+
+        this.properties = properties;
     }
 
-    if (properties.labels() == null || properties.labels().isEmpty()) {
-      throw new IllegalArgumentException("Labels must be provided");
+    /** Return the unique identifier for the model. In this case, it's the model's path. */
+    public String getUID() {
+        return properties.modelPath().toString();
     }
 
-    if (properties.resolutionWidth() <= 0 || properties.resolutionHeight() <= 0) {
-      throw new IllegalArgumentException("Resolution must be greater than 0");
+    public String getNickname() {
+        return properties.nickname();
     }
 
-    if (properties.family() != Family.RKNN) {
-      throw new IllegalArgumentException("Model family must be RKNN");
+    public Family getFamily() {
+        return properties.family();
     }
 
-    if (properties.version() != Version.YOLOV5
-        && properties.version() != Version.YOLOV8
-        && properties.version() != Version.YOLOV11) {
-      throw new IllegalArgumentException("Model version must be YOLOV5, YOLOV8, or YOLOV11");
+    public ModelProperties getProperties() {
+        return properties;
     }
 
-    this.properties = properties;
-  }
+    public ObjectDetector load() {
+        return new RknnObjectDetector(
+                this, new Size(properties.resolutionWidth(), properties.resolutionHeight()));
+    }
 
-  /** Return the unique identifier for the model. In this case, it's the model's path. */
-  public String getUID() {
-    return properties.modelPath().toString();
-  }
-
-  public String getNickname() {
-    return properties.nickname();
-  }
-
-  public Family getFamily() {
-    return properties.family();
-  }
-
-  public ModelProperties getProperties() {
-    return properties;
-  }
-
-  public ObjectDetector load() {
-    return new RknnObjectDetector(
-        this, new Size(properties.resolutionWidth(), properties.resolutionHeight()));
-  }
-
-  public String toString() {
-    return "RknnModel{" + "modelFile=" + modelFile + ", properties=" + properties + '}';
-  }
+    public String toString() {
+        return "RknnModel{" + "modelFile=" + modelFile + ", properties=" + properties + '}';
+    }
 }
