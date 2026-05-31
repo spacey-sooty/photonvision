@@ -19,6 +19,27 @@ nativeUtils {
     }
 }
 
+configurations {
+    gtsamHeaders
+    gtsamStatic
+}
+
+// TODO: Platform detection. I couldn't figure out how to do this with WPILib's nativeUtils, so enjoy this ChatGPT nonsense instead
+dependencies {
+    gtsamHeaders "edu.wpi.first.thirdparty.frc2025.gtsam:gtsam-cpp:4.3-3:headers@zip"
+    gtsamStatic "edu.wpi.first.thirdparty.frc2025.gtsam:gtsam-cpp:4.3-3:linuxx86-64static@zip"
+}
+
+task extractGtsamHeaders(type: Copy) {
+    from zipTree(configurations.gtsamHeaders.singleFile)
+    into "$buildDir/gtsam/headers"
+}
+
+task extractGtsamStatic(type: Copy) {
+    from zipTree(configurations.gtsamStatic.singleFile)
+    into "$buildDir/gtsam/static"
+}
+
 sourceSets.main.java.srcDir "${projectDir}/src/generated/main/java"
 
 model {
@@ -48,9 +69,26 @@ model {
 
             binaries.all {
                 it.tasks.withType(CppCompile) {
+                    it.dependsOn extractGtsamHeaders
+                    cppCompiler.args(
+                            "-I${buildDir}/gtsam/headers"
+                            )
+
                     it.dependsOn generateProto
                 }
+                it.tasks.withType(LinkSharedLibrary) {
+                    dependsOn extractGtsamStatic
+
+                    def libs = fileTree("$buildDir/gtsam/static") {
+                        include "**/*.a"
+                        include "**/*.lib"
+                    }.files.collect { it.absolutePath }
+
+                    it.linkerArgs.addAll(libs)
+                }
             }
+
+
 
             nativeUtils.useRequiredLibrary(it, "wpiutil_shared")
             nativeUtils.useRequiredLibrary(it, "datalog_shared")
