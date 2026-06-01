@@ -25,9 +25,10 @@ configurations {
 }
 
 // TODO: Platform detection. I couldn't figure out how to do this with WPILib's nativeUtils, so enjoy this ChatGPT nonsense instead
+// Right now this pulls from a local maven repo on my machine, so it won't work in CI. You need to build from Bobcat66/thirdparty-gtsam for this to work. Eventually i'll upstream this
 dependencies {
-    gtsamHeaders "edu.wpi.first.thirdparty.frc2025.gtsam:gtsam-cpp:4.3-3:headers@zip"
-    gtsamStatic "edu.wpi.first.thirdparty.frc2025.gtsam:gtsam-cpp:4.3-3:linuxx86-64static@zip"
+    gtsamHeaders "org.wpilib.thirdparty.frc2027.gtsam:gtsam-cpp:4.3-5dev:headers@zip"
+    gtsamStatic "org.wpilib.thirdparty.frc2027.gtsam:gtsam-cpp:4.3-5dev:linuxx86-64static@zip"
 }
 
 task extractGtsamHeaders(type: Copy) {
