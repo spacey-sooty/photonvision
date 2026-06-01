@@ -31,8 +31,8 @@ configurations {
 // Right now this pulls from a local maven repo, so it won't work in CI. You need to build from Bobcat66/thirdparty-gtsam:pv_patch for this to work. Eventually i'll upstream this
 // There seems to have been a breaking change between the Eigen version that the published gtsam artifact was built with and the one in WPILib. Both GTSAM and Eigen are bumped in Bobcat66/thirdparty-gtsam:pv_patch to fix the issue
 dependencies {
-    gtsamHeaders "org.wpilib.thirdparty.frc2027.gtsam:gtsam-cpp:4.3-5dev:headers@zip"
-    gtsamStatic "org.wpilib.thirdparty.frc2027.gtsam:gtsam-cpp:4.3-5dev:linuxx86-64static@zip"
+    gtsamHeaders "org.wpilib.thirdparty.gtsam:gtsam-cpp:2027-4.3-5:headers@zip"
+    gtsamStatic "org.wpilib.thirdparty.gtsam:gtsam-cpp:2027-4.3-5:linuxx86-64static@zip"
 }
 
 task extractGtsamHeaders(type: Copy) {
