@@ -24,8 +24,12 @@ configurations {
     gtsamStatic
 }
 
-// TODO: Platform detection. I couldn't figure out how to do this with WPILib's nativeUtils, so enjoy this ChatGPT nonsense instead
-// Right now this pulls from a local maven repo on my machine, so it won't work in CI. You need to build from Bobcat66/thirdparty-gtsam for this to work. Eventually i'll upstream this
+// NOTE: For now, TSAM headers should be isolated from the rest of the project, and ideally they shouldn't be included in public-facing headers.
+// Otherwise we have to include GTSAM as a dependency for photon-lib, which is inconvenient to do with the current janky build setup.
+
+// TODO: Platform detection. couldn't figure out how to do this with WPILib's nativeUtils, so enjoy this ChatGPT nonsense instead
+// Right now this pulls from a local maven repo, so it won't work in CI. You need to build from Bobcat66/thirdparty-gtsam:pv_patch for this to work. Eventually i'll upstream this
+// There seems to have been a breaking change between the Eigen version that the published gtsam artifact was built with and the one in WPILib. Both GTSAM and Eigen are bumped in Bobcat66/thirdparty-gtsam:pv_patch to fix the issue
 dependencies {
     gtsamHeaders "org.wpilib.thirdparty.frc2027.gtsam:gtsam-cpp:4.3-5dev:headers@zip"
     gtsamStatic "org.wpilib.thirdparty.frc2027.gtsam:gtsam-cpp:4.3-5dev:linuxx86-64static@zip"
@@ -117,6 +121,24 @@ model {
 
             binaries.all {
                 lib library: nativeName, linkage: 'shared'
+                it.tasks.withType(CppCompile) {
+                    it.dependsOn extractGtsamHeaders
+                    cppCompiler.args(
+                            "-I${buildDir}/gtsam/headers"
+                            )
+
+                    it.dependsOn generateProto
+                }
+                it.tasks.withType(LinkSharedLibrary) {
+                    dependsOn extractGtsamStatic
+
+                    def libs = fileTree("$buildDir/gtsam/static") {
+                        include "**/*.a"
+                        include "**/*.lib"
+                    }.files.collect { it.absolutePath }
+
+                    it.linkerArgs.addAll(libs)
+                }
             }
 
             nativeUtils.useRequiredLibrary(it, "wpiutil_shared")
@@ -153,6 +175,22 @@ model {
                 lib library: "${nativeName}JNI", linkage: 'shared'
                 it.tasks.withType(CppCompile) {
                     it.dependsOn generateProto
+                    it.dependsOn extractGtsamHeaders
+                    cppCompiler.args(
+                            "-I${buildDir}/gtsam/headers"
+                            )
+
+                    it.dependsOn generateProto
+                }
+                it.tasks.withType(LinkSharedLibrary) {
+                    dependsOn extractGtsamStatic
+
+                    def libs = fileTree("$buildDir/gtsam/static") {
+                        include "**/*.a"
+                        include "**/*.lib"
+                    }.files.collect { it.absolutePath }
+
+                    it.linkerArgs.addAll(libs)
                 }
             }
 
