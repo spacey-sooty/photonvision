@@ -27,12 +27,10 @@ configurations {
 // NOTE: For now, TSAM headers should be isolated from the rest of the project, and ideally they shouldn't be included in public-facing headers.
 // Otherwise we have to include GTSAM as a dependency for photon-lib, which is inconvenient to do with the current janky build setup.
 
-// TODO: Platform detection. couldn't figure out how to do this with WPILib's nativeUtils, so enjoy this ChatGPT nonsense instead
-// Right now this pulls from a local maven repo, so it won't work in CI. You need to build from Bobcat66/thirdparty-gtsam:pv_patch for this to work. Eventually i'll upstream this
-// There seems to have been a breaking change between the Eigen version that the published gtsam artifact was built with and the one in WPILib. Both GTSAM and Eigen are bumped in Bobcat66/thirdparty-gtsam:pv_patch to fix the issue
+// Couldn't figure out how to do this with WPILib's nativeUtils, so enjoy this ChatGPT nonsense instead
 dependencies {
-    gtsamHeaders "org.wpilib.thirdparty.gtsam:gtsam-cpp:2027-4.3-5:headers@zip"
-    gtsamStatic "org.wpilib.thirdparty.gtsam:gtsam-cpp:2027-4.3-5:linuxx86-64static@zip"
+    gtsamHeaders "org.wpilib.thirdparty.gtsam:gtsam-cpp:${rootProject.ext.gtsamThirdPartyVersion}:headers@zip"
+    gtsamStatic "org.wpilib.thirdparty.gtsam:gtsam-cpp:${rootProject.ext.gtsamThirdPartyVersion}:${rootProject.ext.jniPlatform}static@zip"
 }
 
 task extractGtsamHeaders(type: Copy) {

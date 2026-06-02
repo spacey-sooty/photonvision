@@ -46,6 +46,7 @@ ext {
     tfliteVersion = "v2027.0.2-alpha-1"
     wpilibYear = "2027_alpha5"
     mrcalVersion = "v2027.0.2";
+    gtsamThirdPartyVersion = "2027-4.3-5";
 
     pubVersion = versionString
     isDev = pubVersion.startsWith("dev")
