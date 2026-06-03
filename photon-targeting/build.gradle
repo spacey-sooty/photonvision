@@ -19,29 +19,6 @@ nativeUtils {
     }
 }
 
-// TODO: Centralize gradle logic for gtsam. Right now its duplicated across multiple gradle files and is a nightmare to maintain.
-
-// Couldn't figure out how to do this with WPILib's nativeUtils, so enjoy this ChatGPT nonsense instead
-configurations {
-    gtsamHeaders
-    gtsamStatic
-}
-
-dependencies {
-    gtsamHeaders "org.wpilib.thirdparty.gtsam:gtsam-cpp:${rootProject.ext.gtsamThirdPartyVersion}:headers@zip"
-    gtsamStatic "org.wpilib.thirdparty.gtsam:gtsam-cpp:${rootProject.ext.gtsamThirdPartyVersion}:${rootProject.ext.jniPlatform}static@zip"
-}
-
-task extractGtsamHeaders(type: Copy) {
-    from zipTree(configurations.gtsamHeaders.singleFile)
-    into "$buildDir/gtsam/headers"
-}
-
-task extractGtsamStatic(type: Copy) {
-    from zipTree(configurations.gtsamStatic.singleFile)
-    into "$buildDir/gtsam/static"
-}
-
 sourceSets.main.java.srcDir "${projectDir}/src/generated/main/java"
 
 model {
@@ -71,27 +48,7 @@ model {
 
             binaries.all {
                 it.tasks.withType(CppCompile) {
-                    it.dependsOn extractGtsamHeaders
-                    cppCompiler.args.addAll([
-                        "-I${buildDir}/gtsam/headers",
-                        "-Wno-error=deprecated-declarations"
-                    ])
-
                     it.dependsOn generateProto
-                }
-                it.tasks.withType(LinkSharedLibrary) {
-                    dependsOn extractGtsamStatic
-
-                    def libs = fileTree("$buildDir/gtsam/static") {
-                        include "**/*.a"
-                        include "**/*.lib"
-                    }.files.collect { it.absolutePath }
-
-                    it.linkerArgs.addAll(libs)
-                    it.linkerArgs.addAll([
-                        "-ltbb",
-                        "-ltbbmalloc"
-                    ])
                 }
             }
 
@@ -124,27 +81,7 @@ model {
             binaries.all {
                 lib library: nativeName, linkage: 'shared'
                 it.tasks.withType(CppCompile) {
-                    it.dependsOn extractGtsamHeaders
-                    cppCompiler.args.addAll([
-                        "-I${buildDir}/gtsam/headers ",
-                        "-Wno-error=deprecated-declarations"
-                    ])
-
                     it.dependsOn generateProto
-                }
-                it.tasks.withType(LinkSharedLibrary) {
-                    dependsOn extractGtsamStatic
-
-                    def libs = fileTree("$buildDir/gtsam/static") {
-                        include "**/*.a"
-                        include "**/*.lib"
-                    }.files.collect { it.absolutePath }
-
-                    it.linkerArgs.addAll(libs)
-                    it.linkerArgs.addAll([
-                        "-ltbb",
-                        "-ltbbmalloc"
-                    ])
                 }
             }
 
@@ -181,27 +118,7 @@ model {
                 lib library: nativeName, linkage: 'shared'
                 lib library: "${nativeName}JNI", linkage: 'shared'
                 it.tasks.withType(CppCompile) {
-                    it.dependsOn extractGtsamHeaders
-                    cppCompiler.args.addAll([
-                        "-I${buildDir}/gtsam/headers",
-                        "-Wno-error=deprecated-declarations"
-                    ])
-
                     it.dependsOn generateProto
-                }
-                it.tasks.withType(LinkExecutable) {
-                    dependsOn extractGtsamStatic
-
-                    def libs = fileTree("$buildDir/gtsam/static") {
-                        include "**/*.a"
-                        include "**/*.lib"
-                    }.files.collect { it.absolutePath }
-
-                    it.linkerArgs.addAll(libs)
-                    it.linkerArgs.addAll([
-                        "-ltbb",
-                        "-ltbbmalloc"
-                    ])
                 }
             }
 
@@ -244,6 +161,8 @@ model {
         }
     }
 }
+
+apply from: "${rootDir}/shared/gtsam.gradle"
 
 apply from: "${rootDir}/shared/javacpp/publish.gradle"
 

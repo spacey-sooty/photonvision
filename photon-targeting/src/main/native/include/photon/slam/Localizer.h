@@ -41,7 +41,7 @@ class Localizer {
   using LandmarkMap = std::map<Key, SmartFactor::shared_ptr>;
 
  public:
-  Localizer(FieldLayout fieldLayout);
+  explicit Localizer(FieldLayout fieldLayout);
 
   /**
    * Add a prior factor on the world->robot pose

@@ -18,6 +18,7 @@
 #include "photon/slam/Localizer.h"
 
 #include <iostream>
+#include <utility>
 #include <vector>
 
 #include "gtsam/nonlinear/Expression.h"

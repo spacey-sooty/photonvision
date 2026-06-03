@@ -1,0 +1,59 @@
+// Couldn't figure out how to do this with WPILib's nativeUtils, so enjoy this ChatGPT nonsense instead
+configurations {
+    gtsamHeaders
+    gtsamStatic
+}
+
+dependencies {
+    gtsamHeaders "org.wpilib.thirdparty.gtsam:gtsam-cpp:${rootProject.ext.gtsamThirdPartyVersion}:headers@zip"
+    gtsamStatic "org.wpilib.thirdparty.gtsam:gtsam-cpp:${rootProject.ext.gtsamThirdPartyVersion}:${rootProject.ext.jniPlatform}static@zip"
+}
+
+task extractGtsamHeaders(type: Copy) {
+    from zipTree(configurations.gtsamHeaders.singleFile)
+    into "$project.buildDir/gtsam/headers"
+}
+
+task extractGtsamStatic(type: Copy) {
+    from zipTree(configurations.gtsamStatic.singleFile)
+    into "$project.buildDir/gtsam/static"
+}
+
+def linkGtsamStatic = { task ->
+    task.dependsOn extractGtsamStatic
+
+    def libs = fileTree("$project.buildDir/gtsam/static") {
+        include "**/*.a"
+        include "**/*.lib"
+    }.files.collect { it.absolutePath }
+
+    task.linkerArgs.addAll(libs)
+    task.linkerArgs.addAll([
+        "-ltbb",
+        "-ltbbmalloc"
+    ])
+}
+
+model {
+    binaries {
+        withType(NativeBinarySpec).all {
+
+            // Add GTSAM headers
+            it.tasks.withType(CppCompile) {
+                it.dependsOn extractGtsamHeaders
+                cppCompiler.args.addAll([
+                    "-I${project.buildDir}/gtsam/headers",
+                    "-Wno-error=deprecated-declarations"
+                ])
+            }
+
+            // Link GTSAM to all shared libraries and executables
+            it.tasks.withType(LinkSharedLibrary) {
+                linkGtsamStatic(it)
+            }
+            it.tasks.withType(LinkExecutable) {
+                linkGtsamStatic(it)
+            }
+        }
+    }
+}
