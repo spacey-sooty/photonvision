@@ -19,15 +19,14 @@ nativeUtils {
     }
 }
 
+// TODO: Centralize gradle logic for gtsam. Right now its duplicated across multiple gradle files and is a nightmare to maintain.
+
+// Couldn't figure out how to do this with WPILib's nativeUtils, so enjoy this ChatGPT nonsense instead
 configurations {
     gtsamHeaders
     gtsamStatic
 }
 
-// NOTE: For now, TSAM headers should be isolated from the rest of the project, and ideally they shouldn't be included in public-facing headers.
-// Otherwise we have to include GTSAM as a dependency for photon-lib, which is inconvenient to do with the current janky build setup.
-
-// Couldn't figure out how to do this with WPILib's nativeUtils, so enjoy this ChatGPT nonsense instead
 dependencies {
     gtsamHeaders "org.wpilib.thirdparty.gtsam:gtsam-cpp:${rootProject.ext.gtsamThirdPartyVersion}:headers@zip"
     gtsamStatic "org.wpilib.thirdparty.gtsam:gtsam-cpp:${rootProject.ext.gtsamThirdPartyVersion}:${rootProject.ext.jniPlatform}static@zip"
@@ -73,9 +72,10 @@ model {
             binaries.all {
                 it.tasks.withType(CppCompile) {
                     it.dependsOn extractGtsamHeaders
-                    cppCompiler.args(
-                            "-I${buildDir}/gtsam/headers"
-                            )
+                    cppCompiler.args.addAll([
+                        "-I${buildDir}/gtsam/headers",
+                        "-Wno-error=deprecated-declarations"
+                    ])
 
                     it.dependsOn generateProto
                 }
@@ -88,6 +88,10 @@ model {
                     }.files.collect { it.absolutePath }
 
                     it.linkerArgs.addAll(libs)
+                    it.linkerArgs.addAll([
+                        "-ltbb",
+                        "-ltbbmalloc"
+                    ])
                 }
             }
 
@@ -121,9 +125,10 @@ model {
                 lib library: nativeName, linkage: 'shared'
                 it.tasks.withType(CppCompile) {
                     it.dependsOn extractGtsamHeaders
-                    cppCompiler.args(
-                            "-I${buildDir}/gtsam/headers"
-                            )
+                    cppCompiler.args.addAll([
+                        "-I${buildDir}/gtsam/headers ",
+                        "-Wno-error=deprecated-declarations"
+                    ])
 
                     it.dependsOn generateProto
                 }
@@ -136,6 +141,10 @@ model {
                     }.files.collect { it.absolutePath }
 
                     it.linkerArgs.addAll(libs)
+                    it.linkerArgs.addAll([
+                        "-ltbb",
+                        "-ltbbmalloc"
+                    ])
                 }
             }
 
@@ -172,15 +181,15 @@ model {
                 lib library: nativeName, linkage: 'shared'
                 lib library: "${nativeName}JNI", linkage: 'shared'
                 it.tasks.withType(CppCompile) {
-                    it.dependsOn generateProto
                     it.dependsOn extractGtsamHeaders
-                    cppCompiler.args(
-                            "-I${buildDir}/gtsam/headers"
-                            )
+                    cppCompiler.args.addAll([
+                        "-I${buildDir}/gtsam/headers",
+                        "-Wno-error=deprecated-declarations"
+                    ])
 
                     it.dependsOn generateProto
                 }
-                it.tasks.withType(LinkSharedLibrary) {
+                it.tasks.withType(LinkExecutable) {
                     dependsOn extractGtsamStatic
 
                     def libs = fileTree("$buildDir/gtsam/static") {
@@ -189,6 +198,10 @@ model {
                     }.files.collect { it.absolutePath }
 
                     it.linkerArgs.addAll(libs)
+                    it.linkerArgs.addAll([
+                        "-ltbb",
+                        "-ltbbmalloc"
+                    ])
                 }
             }
 
