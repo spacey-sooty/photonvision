@@ -242,10 +242,10 @@ jobs:
       matrix:
         include:
          - os: windows-2022
-           tbb_install_cmd: choco install -y tbb
+           tbb_install_cmd: choco install -y intel-tbb
            artifact-name: Win64
          - os: macos-26
-           tbb_install_cmd: | 
+           tbb_install_cmd: |
             brew update
             brew install tbb
            artifact-name: macOS
@@ -254,7 +254,7 @@ jobs:
             sudo apt-get update -q
             sudo apt-get install -y libtbb-dev
            artifact-name: Linux
-          
+
 
     name: "Photonlib - Build Host - ${{ matrix.artifact-name }}"
     runs-on: ${{ matrix.os }}

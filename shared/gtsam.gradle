@@ -40,7 +40,7 @@ def linkGtsamStatic = { task, toolchain ->
         task.linkerArgs.addAll([
             "-ltbb",
             "-ltbbmalloc"
-        ]) 
+        ])
     } else if (toolchain instanceof VisualCpp) {
         task.linkerArgs.addAll([
             "tbb.lib",
