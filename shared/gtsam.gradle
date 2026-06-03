@@ -19,7 +19,15 @@ task extractGtsamStatic(type: Copy) {
     into "$project.buildDir/gtsam/static"
 }
 
-def linkGtsamStatic = { task ->
+def addGtsamHeaders = { task, toolchain, cppCompiler ->
+    task.dependsOn extractGtsamHeaders
+    cppCompiler.args.add("-I${project.buildDir}/gtsam/headers")
+    if (toolchain instanceof GccCompatibleToolChain) {
+        cppCompiler.args.add("-Wno-error=deprecated-declarations")
+    }
+}
+
+def linkGtsamStatic = { task, toolchain ->
     task.dependsOn extractGtsamStatic
 
     def libs = fileTree("$project.buildDir/gtsam/static") {
@@ -28,31 +36,33 @@ def linkGtsamStatic = { task ->
     }.files.collect { it.absolutePath }
 
     task.linkerArgs.addAll(libs)
-    task.linkerArgs.addAll([
-        "-ltbb",
-        "-ltbbmalloc"
-    ])
+    if (toolchain instanceof GccCompatibleToolChain) {
+        task.linkerArgs.addAll([
+            "-ltbb",
+            "-ltbbmalloc"
+        ]) 
+    } else if (toolchain instanceof VisualCpp) {
+        task.linkerArgs.addAll([
+            "tbb.lib",
+            "tbbmalloc.lib"
+        ])
+    }
 }
 
 model {
     binaries {
-        withType(NativeBinarySpec).all {
-
+        withType(NativeBinarySpec).all { binary ->
             // Add GTSAM headers
-            it.tasks.withType(CppCompile) {
-                it.dependsOn extractGtsamHeaders
-                cppCompiler.args.addAll([
-                    "-I${project.buildDir}/gtsam/headers",
-                    "-Wno-error=deprecated-declarations"
-                ])
+            binary.tasks.withType(CppCompile) { compileTask ->
+                addGtsamHeaders(compileTask, binary.toolChain, cppCompiler)
             }
 
             // Link GTSAM to all shared libraries and executables
-            it.tasks.withType(LinkSharedLibrary) {
-                linkGtsamStatic(it)
+            binary.tasks.withType(LinkSharedLibrary) { linkTask ->
+                linkGtsamStatic(linkTask, binary.toolChain)
             }
-            it.tasks.withType(LinkExecutable) {
-                linkGtsamStatic(it)
+            binary.tasks.withType(LinkExecutable) { linkTask ->
+                linkGtsamStatic(linkTask, binary.toolChain)
             }
         }
     }

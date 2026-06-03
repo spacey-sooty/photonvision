@@ -170,6 +170,10 @@ jobs:
           cache: pnpm
           cache-dependency-path: photon-client/pnpm-lock.yaml
           node-version: 24
+      - name: Install tbb
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y libtbb-dev
       - name: Gradle Build
         run: ./gradlew photon-targeting:build photon-core:build photon-server:build -x check
       - name: Gradle Tests and Coverage
@@ -238,11 +242,19 @@ jobs:
       matrix:
         include:
          - os: windows-2022
+           tbb_install_cmd: choco install -y tbb
            artifact-name: Win64
          - os: macos-26
+           tbb_install_cmd: | 
+            brew update
+            brew install tbb
            artifact-name: macOS
          - os: ubuntu-24.04
+           tbb_install_cmd: |
+            sudo apt-get update -q
+            sudo apt-get install -y libtbb-dev
            artifact-name: Linux
+          
 
     name: "Photonlib - Build Host - ${{ matrix.artifact-name }}"
     runs-on: ${{ matrix.os }}
@@ -255,6 +267,8 @@ jobs:
         with:
           java-version: 25
           distribution: temurin
+      - run: ${{ matrix.tbb_install_cmd }}
+        name: Install tbb
       - run: git fetch --tags --force
       - run: ./gradlew photon-targeting:build photon-lib:build
         name: Build with Gradle
@@ -296,6 +310,10 @@ jobs:
       - name: Config Git
         run: |
           git config --global --add safe.directory /__w/photonvision/photonvision
+      - name: Install tbb
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y libtbb-dev
       - name: Build PhotonLib
         # We don't need to run tests, since we specify only non-native platforms
         run: ./gradlew photon-targeting:build photon-lib:build ${{ matrix.build-options }} -x test
