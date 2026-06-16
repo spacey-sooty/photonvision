@@ -80,9 +80,6 @@ model {
 
             binaries.all {
                 lib library: nativeName, linkage: 'shared'
-                it.tasks.withType(CppCompile) {
-                    it.dependsOn generateProto
-                }
             }
 
             nativeUtils.useRequiredLibrary(it, "wpiutil_shared")
