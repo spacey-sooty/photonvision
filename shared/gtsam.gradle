@@ -7,8 +7,7 @@ nativeUtils {
             sourceClassifier = "static"
             ext = "zip"
             version = rootProject.ext.gtsamThirdPartyVersion
-            targetPlatforms.addAll(nativeUtils.wpi.platforms.desktopPlatforms)
-            targetPlatforms.addAll("linuxarm32", "linuxarm64")
+            targetPlatforms.addAll(nativeUtils.wpi.platforms.allPlatforms)
         }
     }
 }
