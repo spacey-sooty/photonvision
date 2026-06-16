@@ -1,69 +1,14 @@
-// Couldn't figure out how to do this with WPILib's nativeUtils, so enjoy this ChatGPT nonsense instead
-configurations {
-    gtsamHeaders
-    gtsamStatic
-}
-
-dependencies {
-    gtsamHeaders "org.wpilib.thirdparty.gtsam:gtsam-cpp:${rootProject.ext.gtsamThirdPartyVersion}:headers@zip"
-    gtsamStatic "org.wpilib.thirdparty.gtsam:gtsam-cpp:${rootProject.ext.gtsamThirdPartyVersion}:${rootProject.ext.jniPlatform}static@zip"
-}
-
-task extractGtsamHeaders(type: Copy) {
-    from zipTree(configurations.gtsamHeaders.singleFile)
-    into "$project.buildDir/gtsam/headers"
-}
-
-task extractGtsamStatic(type: Copy) {
-    from zipTree(configurations.gtsamStatic.singleFile)
-    into "$project.buildDir/gtsam/static"
-}
-
-def addGtsamHeaders = { task, toolchain, cppCompiler ->
-    task.dependsOn extractGtsamHeaders
-    cppCompiler.args.add("-I${project.buildDir}/gtsam/headers")
-    if (toolchain instanceof GccCompatibleToolChain) {
-        cppCompiler.args.add("-Wno-error=deprecated-declarations")
-    }
-}
-
-def linkGtsamStatic = { task, toolchain ->
-    task.dependsOn extractGtsamStatic
-
-    def libs = fileTree("$project.buildDir/gtsam/static") {
-        include "**/*.a"
-        include "**/*.lib"
-    }.files.collect { it.absolutePath }
-
-    task.linkerArgs.addAll(libs)
-    if (toolchain instanceof GccCompatibleToolChain) {
-        task.linkerArgs.addAll([
-            "-ltbb",
-            "-ltbbmalloc"
-        ])
-    } else if (toolchain instanceof VisualCpp) {
-        task.linkerArgs.addAll([
-            "tbb.lib",
-            "tbbmalloc.lib"
-        ])
-    }
-}
-
-model {
-    binaries {
-        withType(NativeBinarySpec).all { binary ->
-            // Add GTSAM headers
-            binary.tasks.withType(CppCompile) { compileTask ->
-                addGtsamHeaders(compileTask, binary.toolChain, cppCompiler)
-            }
-
-            // Link GTSAM to all shared libraries and executables
-            binary.tasks.withType(LinkSharedLibrary) { linkTask ->
-                linkGtsamStatic(linkTask, binary.toolChain)
-            }
-            binary.tasks.withType(LinkExecutable) { linkTask ->
-                linkGtsamStatic(linkTask, binary.toolChain)
-            }
+nativeUtils {
+    nativeDependencyContainer {
+        gtsam(getNativeDependencyTypeClass('WPIStaticMavenDependency')) {
+            groupId = "org.wpilib.thirdparty.gtsam"
+            artifactId = "gtsam-cpp"
+            headerClassifier = "headers"
+            sourceClassifier = "static"
+            ext = "zip"
+            version = rootProject.ext.gtsamThirdPartyVersion
+            targetPlatforms.addAll(nativeUtils.wpi.platforms.desktopPlatforms)
+            targetPlatforms.addAll("linuxarm32", "linuxarm64")
         }
     }
 }

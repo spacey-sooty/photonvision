@@ -16,6 +16,7 @@ apply plugin: 'org.wpilib.NativeUtils'
 
 apply from: "${rootDir}/shared/config.gradle"
 apply from: "${rootDir}/shared/javacommon.gradle"
+apply from: "${rootDir}/shared/gtsam.gradle"
 
 nativeUtils {
     exportsConfigs {
@@ -51,6 +52,7 @@ model {
                 }
             }
 
+            nativeUtils.useRequiredLibrary(it, 'gtsam')
             nativeUtils.useRequiredLibrary(it, "wpilib_shared")
             nativeUtils.useRequiredLibrary(it, "apriltag_shared")
             nativeUtils.useRequiredLibrary(it, "opencv_shared")
@@ -89,6 +91,7 @@ model {
                 }
             }
 
+            nativeUtils.useRequiredLibrary(it, 'gtsam')
             nativeUtils.useRequiredLibrary(it, "datalog_shared")
             nativeUtils.useRequiredLibrary(it, "cscore_shared")
             nativeUtils.useRequiredLibrary(it, "cameraserver_shared")
@@ -129,8 +132,6 @@ model {
         }
     }
 }
-
-apply from: "${rootDir}/shared/gtsam.gradle"
 
 apply from: "${rootDir}/shared/javacpp/publish.gradle"
 
