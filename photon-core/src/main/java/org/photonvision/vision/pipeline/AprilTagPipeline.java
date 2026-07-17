@@ -38,6 +38,9 @@ import org.photonvision.vision.pipe.impl.AprilTagPoseEstimatorPipe.AprilTagPoseE
 import org.photonvision.vision.pipe.impl.CalculateFPSPipe;
 import org.photonvision.vision.pipe.impl.MultiTargetPNPPipe;
 import org.photonvision.vision.pipe.impl.MultiTargetPNPPipe.MultiTargetPNPPipeParams;
+import org.photonvision.vision.pipe.impl.ObjectDetectionPipe;
+import org.photonvision.vision.pipe.impl.ObjectDetectionPipe.ObjectDetectionPipeParams;
+import org.photonvision.vision.pipe.impl.StaticCropPipe;
 import org.photonvision.vision.pipeline.result.CVPipelineResult;
 import org.photonvision.vision.target.TrackedTarget;
 import org.photonvision.vision.target.TrackedTarget.TargetCalculationParameters;
@@ -59,6 +62,8 @@ public class AprilTagPipeline extends CVPipeline<CVPipelineResult, AprilTagPipel
             new AprilTagPoseEstimatorPipe();
     private final MultiTargetPNPPipe multiTagPNPPipe = new MultiTargetPNPPipe();
     private final CalculateFPSPipe calculateFPSPipe = new CalculateFPSPipe();
+    private final ObjectDetectionPipe objectDetectionPipe = new ObjectDetectionPipe();
+    private final StaticCropPipe cropPipe = new StaticCropPipe();
 
     private static final FrameThresholdType PROCESSING_TYPE = FrameThresholdType.GREYSCALE;
 
@@ -128,6 +133,15 @@ public class AprilTagPipeline extends CVPipeline<CVPipelineResult, AprilTagPipel
                         new MultiTargetPNPPipeParams(frameStaticProperties.cameraCalibration, atfl, tagModel));
             }
         }
+
+        if (settings.mltagEnabled) {
+            if (settings.tagModel.isEmpty()) {
+                logger.error("ML Tag is enabled but no model is found.");
+            }
+            objectDetectionPipe.setParams(
+                    new ObjectDetectionPipeParams(
+                            settings.mlConfidence, settings.mlNms, settings.tagModel.get()));
+        }
     }
 
     @Override
@@ -139,11 +153,58 @@ public class AprilTagPipeline extends CVPipeline<CVPipelineResult, AprilTagPipel
             return new CVPipelineResult(frame.sequenceID, 0, 0, List.of(), frame);
         }
 
-        CVPipeResult<List<AprilTagDetection>> tagDetectionPipeResult =
-                aprilTagDetectionPipe.run(frame.processedImage);
-        sumPipeNanosElapsed += tagDetectionPipeResult.nanosElapsed;
+        List<AprilTagDetection> detections = new ArrayList<>();
+        boolean mltagNoneFound = true;
+        if (settings.mltagEnabled) {
+            var odResults = objectDetectionPipe.run(frame.processedImage);
+            sumPipeNanosElapsed += odResults.nanosElapsed;
+            for (var result : odResults.output) {
+                var bbox = result.bbox().boundingRect();
+                cropPipe.setParams(bbox);
+                var cropped = cropPipe.run(frame.processedImage);
+                sumPipeNanosElapsed += cropped.nanosElapsed;
+                CVPipeResult<List<AprilTagDetection>> tagDetectionPipeResult;
+                tagDetectionPipeResult = aprilTagDetectionPipe.run(cropped.output);
+                sumPipeNanosElapsed += tagDetectionPipeResult.nanosElapsed;
+                var tagDetection = tagDetectionPipeResult.output.get(0);
 
-        List<AprilTagDetection> detections = tagDetectionPipeResult.output;
+                double left = bbox.x;
+                double right = bbox.x + bbox.width;
+                double top = bbox.y;
+                double bottom = bbox.y + bbox.height;
+                var corners = tagDetection.getCorners();
+                var cornerOffsets =
+                        new double[] {
+                            left, bottom,
+                            right, bottom,
+                            right, top,
+                            left, top
+                        };
+                var newCorners = new double[8];
+                for (var i = 0; i < cornerOffsets.length; i++) {
+                    newCorners[i] = corners[i] + newCorners[i];
+                }
+
+                detections.add(
+                        new AprilTagDetection(
+                                tagDetection.getFamily(),
+                                tagDetection.getId(),
+                                tagDetection.getHamming(),
+                                tagDetection.getDecisionMargin(),
+                                tagDetection.getHomography(),
+                                tagDetection.getCenterX() + bbox.x,
+                                tagDetection.getCenterY() + bbox.y,
+                                newCorners));
+            }
+        }
+
+        if (!settings.mltagEnabled || mltagNoneFound) {
+            CVPipeResult<List<AprilTagDetection>> tagDetectionPipeResult;
+            tagDetectionPipeResult = aprilTagDetectionPipe.run(frame.processedImage);
+            sumPipeNanosElapsed += tagDetectionPipeResult.nanosElapsed;
+            detections = tagDetectionPipeResult.output;
+        }
+
         List<AprilTagDetection> usedDetections = new ArrayList<>();
         List<TrackedTarget> targetList = new ArrayList<>();
 
