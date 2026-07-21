@@ -280,14 +280,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - container: wpilib/systemcore-cross-ubuntu:2027-24.04
-            artifact-name: SystemCore
+          - container: wpilib/systemcore-cross-debian:trixie
+            artifact-name: Systemcore
             build-options: "-Ponlylinuxsystemcore"
-          - container: wpilib/raspbian-cross-ubuntu:2027-bookworm-24.04
-            artifact-name: Raspbian
-            build-options: "-Ponlylinuxarm32"
-          - container: wpilib/aarch64-cross-ubuntu:2027-bookworm-24.04
-            artifact-name: Aarch64
+          - container: wpilib/aarch64-cross-debian:trixie
+            artifact-name: Arm64
             build-options: "-Ponlylinuxarm64"
 
     runs-on: ubuntu-24.04
@@ -377,6 +374,11 @@ jobs:
       - name: Install Arm64 Toolchain
         run: ./gradlew installArm64Toolchain
         if: ${{ (matrix.artifact-name) == 'LinuxArm64' }}
+      - name: Make GCC 14 the default toolchain (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 200
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 200
       - uses: actions/download-artifact@v8
         with:
           name: built-docs
