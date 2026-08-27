@@ -58,6 +58,9 @@ If the resolution changes after cropping and the new resolution has the same asp
 
 The borders of the cropped box can be adjusted either with the sliders at the bottom or adjusted directly on the raw stream with the box
 
-```{image} images/static_cropping.png
-:align: center
+```{raw} html
+<video width="85%" controls>
+    <source src="../../_static/assets/static_cropping.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+</video>
 ```
