@@ -53,7 +53,7 @@ Having the raw stream open with static cropping has a significant impact on perf
 :::
 
 :::{note}
-If the resolution changes after cropping and the new resolution has the same aspect ratio as the original, the crop is scaled directly to the new resolution. If, on the other hand, the new resolution has a different aspect ratio, the crop is reset to zero. 
+If the resolution changes after cropping and the new resolution has the same aspect ratio as the original, the crop is scaled directly to the new resolution. If, on the other hand, the new resolution has a different aspect ratio, the crop is reset to zero.
 :::
 
 The borders of the cropped box can be adjusted either with the sliders at the bottom or adjusted directly on the raw stream with the box
