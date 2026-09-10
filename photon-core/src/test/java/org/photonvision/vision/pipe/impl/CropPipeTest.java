@@ -41,9 +41,11 @@ import org.photonvision.vision.calibration.CameraCalibrationCoefficients;
 import org.photonvision.vision.calibration.CameraLensModel;
 import org.photonvision.vision.calibration.JsonMatOfDouble;
 import org.photonvision.vision.frame.Frame;
+import org.photonvision.vision.frame.FrameProvider;
 import org.photonvision.vision.frame.FrameStaticProperties;
 import org.photonvision.vision.frame.FrameThresholdType;
 import org.photonvision.vision.opencv.CVMat;
+import org.photonvision.vision.opencv.ImageRotationMode;
 import org.photonvision.vision.pipeline.AdvancedPipelineSettings;
 import org.photonvision.vision.pipeline.AprilTagPipelineSettings;
 import org.photonvision.vision.pipeline.ReflectivePipelineSettings;
@@ -54,13 +56,59 @@ public class CropPipeTest {
         LoadJNI.loadLibraries();
     }
 
+    /** A do-nothing frame provider, to exercise the static-crop frame handling it owns. */
+    private static class TestFrameProvider extends FrameProvider {
+        @Override
+        public Frame get() {
+            return new Frame();
+        }
+
+        @Override
+        protected boolean checkCameraConnected() {
+            return true;
+        }
+
+        @Override
+        public String getName() {
+            return "TestFrameProvider";
+        }
+
+        @Override
+        public void requestFrameThresholdType(FrameThresholdType type) {}
+
+        @Override
+        public void requestFrameRotation(ImageRotationMode rotationMode) {}
+
+        @Override
+        public void requestFrameCopies(boolean copyInput, boolean copyOutput) {}
+
+        @Override
+        public void requestHsvSettings(HSVPipe.HSVParams params) {}
+
+        @Override
+        public void requestBlockForFrames(boolean blockForFrames) {}
+
+        @Override
+        public void release() {}
+    }
+
     /** A crop pipe configured from settings describing the given pixel ranges, crop enabled. */
     private static CropPipe pipeFor(int x0, int x1, int y0, int y1) {
         var pipe = new CropPipe();
-        pipe.setParams(
-                new CropPipe.CropPipeParams(
-                        settings(new IntegerCouple(x0, x1), new IntegerCouple(y0, y1))));
+        pipe.setParams(paramsFor(settings(new IntegerCouple(x0, x1), new IntegerCouple(y0, y1))));
         return pipe;
+    }
+
+    /** A frame provider statically cropping to the given pixel ranges, crop enabled. */
+    private static FrameProvider providerFor(int x0, int x1, int y0, int y1) {
+        var provider = new TestFrameProvider();
+        provider.setCropParams(settings(new IntegerCouple(x0, x1), new IntegerCouple(y0, y1)));
+        return provider;
+    }
+
+    /** Static-crop params for the given settings, built the way FrameProvider builds them. */
+    private static CropPipe.CropPipeParams paramsFor(AdvancedPipelineSettings settings) {
+        return new CropPipe.CropPipeParams(CropPipe.staticCropRect(settings), settings);
     }
 
     /** A frame whose color image is a uniform gray, bright enough to measure dimming against. */
@@ -94,11 +142,11 @@ public class CropPipeTest {
 
     @Test
     public void croppedPropertiesAreCachedPerRectangle() {
-        var pipe = pipeFor(100, 300, 50, 200);
+        var provider = providerFor(100, 300, 50, 200);
         var props = new FrameStaticProperties(640, 480, 70.0, null);
 
-        var first = pipe.cropFrame(uniformFrame(640, 480, 200, props));
-        var second = pipe.cropFrame(uniformFrame(640, 480, 200, props));
+        var first = provider.cropFrame(uniformFrame(640, 480, 200, props), false);
+        var second = provider.cropFrame(uniformFrame(640, 480, 200, props), false);
         assertSame(
                 first.frameStaticProperties,
                 second.frameStaticProperties,
@@ -112,18 +160,16 @@ public class CropPipeTest {
     public void changingTheCropReleasesTheSupersededCalibration() {
         var cal = calibration();
         var props = new FrameStaticProperties(640, 480, 70.0, cal);
-        var pipe = pipeFor(100, 300, 50, 200);
+        var provider = providerFor(100, 300, 50, 200);
 
-        var first = pipe.cropFrame(uniformFrame(640, 480, 200, props));
+        var first = provider.cropFrame(uniformFrame(640, 480, 200, props), false);
         var firstCal = first.frameStaticProperties.cameraCalibration;
         // Force the lazy native allocation that the release has to clean up.
         assertNotNull(firstCal.getCameraIntrinsicsMat());
         first.release();
 
-        pipe.setParams(
-                new CropPipe.CropPipeParams(
-                        settings(new IntegerCouple(120, 320), new IntegerCouple(60, 210))));
-        var second = pipe.cropFrame(uniformFrame(640, 480, 200, props));
+        provider.setCropParams(settings(new IntegerCouple(120, 320), new IntegerCouple(60, 210)));
+        var second = provider.cropFrame(uniformFrame(640, 480, 200, props), false);
         var secondCal = second.frameStaticProperties.cameraCalibration;
         assertNotSame(firstCal, secondCal);
 
@@ -143,18 +189,19 @@ public class CropPipeTest {
     public void disablingTheCropReleasesTheCachedCalibration() {
         var cal = calibration();
         var props = new FrameStaticProperties(640, 480, 70.0, cal);
-        var pipe = pipeFor(100, 300, 50, 200);
+        var provider = providerFor(100, 300, 50, 200);
 
-        var cropped = pipe.cropFrame(uniformFrame(640, 480, 200, props));
+        var cropped = provider.cropFrame(uniformFrame(640, 480, 200, props), false);
         var croppedCal = cropped.frameStaticProperties.cameraCalibration;
         assertNotNull(croppedCal.getCameraIntrinsicsMat());
         cropped.release();
 
         var disabled = settings(new IntegerCouple(100, 300), new IntegerCouple(50, 200));
         disabled.staticCropEnabled = false;
-        pipe.setParams(new CropPipe.CropPipeParams(disabled));
+        provider.setCropParams(disabled);
         var frame = uniformFrame(640, 480, 200, props);
-        assertSame(frame, pipe.cropFrame(frame), "A disabled crop should pass the frame through");
+        assertSame(
+                frame, provider.cropFrame(frame, false), "A disabled crop should pass the frame through");
 
         assertThrows(
                 RuntimeException.class,
@@ -171,10 +218,9 @@ public class CropPipeTest {
         var props = new FrameStaticProperties(640, 480, 70.0, cal);
         var pipe = pipeFor(100, 300, 50, 200);
 
-        var cropped = pipe.cropFrame(uniformFrame(640, 480, 200, props));
-        var croppedCal = cropped.frameStaticProperties.cameraCalibration;
+        var croppedProps = pipe.croppedProperties(props, new Rect(100, 50, 200, 150));
+        var croppedCal = croppedProps.cameraCalibration;
         assertNotNull(croppedCal.getCameraIntrinsicsMat());
-        cropped.release();
 
         pipe.release();
         assertThrows(
@@ -187,10 +233,10 @@ public class CropPipeTest {
 
     @Test
     public void cropFrameKeepsADimmedFullFrameContextImage() {
-        var pipe = pipeFor(100, 300, 50, 200);
+        var provider = providerFor(100, 300, 50, 200);
         var frame = uniformFrame(640, 480, 200);
 
-        var cropped = pipe.cropFrame(frame, true);
+        var cropped = provider.cropFrame(frame, true);
 
         assertEquals(200, cropped.colorImage.getMat().cols());
         assertEquals(150, cropped.colorImage.getMat().rows());
@@ -214,10 +260,10 @@ public class CropPipeTest {
 
     @Test
     public void cropFrameWithoutContextKeepsNoExtraImage() {
-        var pipe = pipeFor(100, 300, 50, 200);
+        var provider = providerFor(100, 300, 50, 200);
         var frame = uniformFrame(640, 480, 200);
 
-        var cropped = pipe.cropFrame(frame, false);
+        var cropped = provider.cropFrame(frame, false);
 
         assertNull(cropped.contextColorImage, "No context image unless asked for");
         cropped.release();
@@ -290,16 +336,16 @@ public class CropPipeTest {
     }
 
     @Test
-    public void disabledCropReturnsNull() {
+    public void nullRectReturnsNull() {
         var settings = settings(new IntegerCouple(10, 50), new IntegerCouple(10, 50));
         settings.staticCropEnabled = false;
         CropPipe pipe = new CropPipe();
-        pipe.setParams(new CropPipe.CropPipeParams(settings));
+        pipe.setParams(paramsFor(settings));
 
         CVMat in = new CVMat(new Mat(100, 100, CvType.CV_8UC1, new Scalar(0)));
         CVMat out = pipe.run(in).output;
 
-        assertNull(out, "A disabled crop is a no-op");
+        assertNull(out, "A null crop rectangle is a no-op");
 
         in.release();
     }
@@ -317,11 +363,13 @@ public class CropPipeTest {
     }
 
     @Test
-    public void setParamsStoresTheSettings() {
+    public void setParamsStoresTheRectAndSettings() {
         var settings = settings(new IntegerCouple(5, 30), new IntegerCouple(6, 40));
+        var rect = CropPipe.staticCropRect(settings);
         CropPipe pipe = new CropPipe();
-        pipe.setParams(new CropPipe.CropPipeParams(settings));
+        pipe.setParams(new CropPipe.CropPipeParams(rect, settings));
 
+        assertEquals(rect, pipe.getParams().rect(), "getParams should return the configured rect");
         assertEquals(
                 settings, pipe.getParams().settings(), "getParams should return the configured settings");
     }
@@ -358,7 +406,7 @@ public class CropPipeTest {
     public void setParamsRederivesTheRectangle() {
         var settings = settings(new IntegerCouple(10, 50), new IntegerCouple(20, 50));
         CropPipe pipe = new CropPipe();
-        pipe.setParams(new CropPipe.CropPipeParams(settings));
+        pipe.setParams(paramsFor(settings));
 
         CVMat in = new CVMat(new Mat(100, 100, CvType.CV_8UC1, new Scalar(0)));
         CVMat out = pipe.run(in).output;
@@ -367,9 +415,9 @@ public class CropPipeTest {
         out.release();
 
         // The settings object is mutated in place, exactly as the settings subscriber does, so
-        // setParams must re-derive the rectangle rather than trusting object equality.
+        // the rect must be rebuilt from the settings and handed back through setParams.
         settings.staticCropX.set(10, 90);
-        pipe.setParams(new CropPipe.CropPipeParams(settings));
+        pipe.setParams(paramsFor(settings));
 
         out = pipe.run(in).output;
         assertNotNull(out);
@@ -392,7 +440,15 @@ public class CropPipeTest {
         var settings = settings(new IntegerCouple(10, 100), new IntegerCouple(10, 100));
         settings.staticCropEnabled = false;
 
-        assertNull(CropPipe.cropRectFromSettings(settings));
+        assertNull(CropPipe.staticCropRect(settings));
+    }
+
+    /** The aligned rectangle the pipe derived for the given params, read via effectiveCrop. */
+    private static Rect derivedRect(CropPipe.CropPipeParams params) {
+        var pipe = new CropPipe();
+        pipe.setParams(params);
+        // An image large enough that clamping never interferes with the derivation under test.
+        return pipe.effectiveCrop(4096, 4096);
     }
 
     @Test
@@ -405,18 +461,46 @@ public class CropPipeTest {
         settings.staticCropY = new IntegerCouple(151, 401);
 
         settings.decimate = 1;
-        var rect = CropPipe.cropRectFromSettings(settings);
+        var rect = derivedRect(paramsFor(settings));
         assertEquals(200, rect.x, "x should drop to a multiple of 4");
         assertEquals(148, rect.y, "y should drop to a multiple of 4");
         assertEquals(501, rect.x + rect.width, "The requested region should still be covered");
         assertEquals(401, rect.y + rect.height, "The requested region should still be covered");
 
         settings.decimate = 4;
-        rect = CropPipe.cropRectFromSettings(settings);
+        rect = derivedRect(paramsFor(settings));
         assertEquals(192, rect.x, "x should drop to a multiple of 16 at decimate 4");
         assertEquals(144, rect.y, "y should drop to a multiple of 16 at decimate 4");
         assertEquals(501, rect.x + rect.width, "The requested region should still be covered");
         assertEquals(401, rect.y + rect.height, "The requested region should still be covered");
+    }
+
+    @Test
+    public void mlBoundingBoxIsAlignedToTheTileGrid() {
+        // The ML tag path hands the pipe a detection's bounding box directly; it gets the same
+        // tile alignment a static crop does.
+        var settings = new AprilTagPipelineSettings();
+        settings.decimate = 1;
+
+        var rect = derivedRect(new CropPipe.CropPipeParams(new Rect(201, 151, 300, 250), settings));
+        assertEquals(200, rect.x, "x should drop to a multiple of 4");
+        assertEquals(148, rect.y, "y should drop to a multiple of 4");
+        assertEquals(501, rect.x + rect.width, "The requested region should still be covered");
+        assertEquals(401, rect.y + rect.height, "The requested region should still be covered");
+    }
+
+    @Test
+    public void mlBoundingBoxPaddedPastTheEdgeIsPulledIn() {
+        // A padded bounding box can overhang the frame origin; the overhang is dropped rather than
+        // aligned into negative coordinates.
+        var settings = new AprilTagPipelineSettings();
+        settings.decimate = 1;
+
+        var rect = derivedRect(new CropPipe.CropPipeParams(new Rect(-6, -10, 100, 100), settings));
+        assertEquals(0, rect.x, "x origin should be pulled to the frame edge");
+        assertEquals(0, rect.y, "y origin should be pulled to the frame edge");
+        assertEquals(94, rect.width, "The overhang should be dropped from the width");
+        assertEquals(90, rect.height, "The overhang should be dropped from the height");
     }
 
     @Test
@@ -430,7 +514,7 @@ public class CropPipeTest {
         settings.staticCropY = new IntegerCouple(92, 441);
 
         settings.decimate = 1;
-        var rect = CropPipe.cropRectFromSettings(settings);
+        var rect = derivedRect(paramsFor(settings));
         assertEquals(0, rect.x, "x origin should remain at the frame edge");
         assertEquals(
                 837, rect.x + rect.width, "The requested region's right edge should still be covered");
@@ -443,8 +527,7 @@ public class CropPipeTest {
     @Test
     public void rangesBecomeARectangle() {
         var rect =
-                CropPipe.cropRectFromSettings(
-                        settings(new IntegerCouple(10, 110), new IntegerCouple(20, 70)));
+                CropPipe.staticCropRect(settings(new IntegerCouple(10, 110), new IntegerCouple(20, 70)));
 
         assertEquals(new Rect(10, 20, 100, 50), rect);
     }
@@ -452,8 +535,7 @@ public class CropPipeTest {
     @Test
     public void reversedRangesAreNormalized() {
         var rect =
-                CropPipe.cropRectFromSettings(
-                        settings(new IntegerCouple(110, 10), new IntegerCouple(70, 20)));
+                CropPipe.staticCropRect(settings(new IntegerCouple(110, 10), new IntegerCouple(70, 20)));
 
         assertEquals(new Rect(10, 20, 100, 50), rect);
     }
@@ -461,12 +543,10 @@ public class CropPipeTest {
     @Test
     public void emptyRangesProduceNoRectangle() {
         assertNull(
-                CropPipe.cropRectFromSettings(
-                        settings(new IntegerCouple(50, 50), new IntegerCouple(0, 100))),
+                CropPipe.staticCropRect(settings(new IntegerCouple(50, 50), new IntegerCouple(0, 100))),
                 "A zero-width range means no crop");
         assertNull(
-                CropPipe.cropRectFromSettings(
-                        settings(new IntegerCouple(0, 100), new IntegerCouple(50, 50))),
+                CropPipe.staticCropRect(settings(new IntegerCouple(0, 100), new IntegerCouple(50, 50))),
                 "A zero-height range means no crop");
     }
 
@@ -475,14 +555,10 @@ public class CropPipeTest {
         // A bound that overflowed on its way in from the UI arrives as -1. Treating that as a real
         // coordinate produced a one-pixel crop, which segfaults the native apriltag detector, so the
         // sign has to be dropped instead.
-        var x =
-                CropPipe.cropRectFromSettings(
-                        settings(new IntegerCouple(0, -1), new IntegerCouple(0, 480)));
+        var x = CropPipe.staticCropRect(settings(new IntegerCouple(0, -1), new IntegerCouple(0, 480)));
         assertNull(x, "A negative upper bound should not produce a one-pixel-wide crop");
 
-        var y =
-                CropPipe.cropRectFromSettings(
-                        settings(new IntegerCouple(0, 640), new IntegerCouple(0, -1)));
+        var y = CropPipe.staticCropRect(settings(new IntegerCouple(0, 640), new IntegerCouple(0, -1)));
         assertNull(y, "A negative upper bound should not produce a one-pixel-tall crop");
     }
 
@@ -491,7 +567,7 @@ public class CropPipeTest {
         // The UI's "to the frame edge" sentinel is Integer.MAX_VALUE; it has to survive as a huge
         // width rather than wrapping around into something degenerate.
         var rect =
-                CropPipe.cropRectFromSettings(
+                CropPipe.staticCropRect(
                         settings(
                                 new IntegerCouple(0, Integer.MAX_VALUE), new IntegerCouple(0, Integer.MAX_VALUE)));
 
