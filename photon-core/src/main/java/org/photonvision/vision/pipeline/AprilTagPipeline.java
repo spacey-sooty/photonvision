@@ -231,7 +231,7 @@ public class AprilTagPipeline extends CVPipeline<CVPipelineResult, AprilTagPipel
 
                 cropPipe.setParams(new CropPipe.CropPipeParams(bbox, settings));
                 var cropped = cropPipe.run(frame.processedImage);
-                sumPipeNanosElapsed += cropResult.nanosElapsed;
+                sumPipeNanosElapsed += cropped.nanosElapsed;
 
 
                 CVPipeResult<List<AprilTagDetection>> tagDetectionPipeResult =
